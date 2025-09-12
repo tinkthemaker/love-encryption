@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Love Messages ♥</title>
   
-  <!-- PWA & Mobile Themeing -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#101118" />
   <link rel="apple-touch-icon" href="heart-192.png">
@@ -54,6 +53,8 @@
     .action-btn:active { transform: scale(0.98); }
     .action-btn.encrypt { background: linear-gradient(135deg, var(--acc), #617bff); }
     .action-btn.decrypt { background: linear-gradient(135deg, var(--ok), #3cbd83); }
+    .btn { appearance: none; background: #0b0d13; border: 1px solid var(--border); color: var(--muted); border-radius: var(--radius-sm); padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: .15s ease; }
+    .btn:hover { color: var(--text); border-color: var(--muted); }
     .result-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); display: grid; place-items: center; opacity: 0; visibility: hidden; transition: .25s ease; z-index: 100; }
     .result-overlay.active { opacity: 1; visibility: visible; }
     .result-card { width: calc(100% - 32px); max-width: 500px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,.5); transform: scale(0.95); transition: .25s ease; }
@@ -61,7 +62,7 @@
     .result-card h2 { margin: 0 0 12px; font-size: 20px; }
     .result-card textarea { background: #0b0d13; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; min-height: 140px; font-size: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     .result-footer { display: flex; gap: 12px; margin-top: 16px; }
-    .result-footer .btn { flex: 1; appearance: none; background: #0b0d13; border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: var(--radius-sm); font-size: 16px; font-weight: 600; cursor: pointer; }
+    .result-footer .btn { flex: 1; }
     .result-footer .btn.primary { background: var(--acc); color: #fff; border-color: transparent; }
     .status { text-align: center; color: var(--muted); font-size: 14px; padding: 10px; }
     .status.danger { color: var(--danger); }
@@ -87,6 +88,7 @@
           <label for="iters">Security Level (Iterations)</label>
           <input id="iters" type="number" value="200000" min="100000" step="10000">
         </div>
+        <button id="clearAllBtn" class="btn" style="width:100%">🗑️ Clear All</button>
       </div>
     </details>
 
@@ -126,16 +128,12 @@
   </div>
 
   <script>
-    // Register the service worker for PWA functionality
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js').then(reg => {
-          console.log('Service worker registered.', reg);
-        });
+        navigator.serviceWorker.register('./service-worker.js');
       });
     }
 
-    // --- All crypto and UI logic goes here (same as before) ---
     const $ = sel => document.querySelector(sel);
     const enc = new TextEncoder();
     const dec = new TextDecoder();
@@ -222,6 +220,18 @@
       if (scorePercent > 75) strengthBar.classList.add('strong'); else if (scorePercent > 40) strengthBar.classList.add('medium');
       strengthBar.style.width = `${scorePercent}%`;
     });
+
+    // --- NEW: Reset App Functionality ---
+    function resetApp() {
+      ptEl.value = '';
+      ctEl.value = '';
+      passEl.value = '';
+      passEl.dispatchEvent(new Event('input')); // Reset strength meter
+      switchTab('encrypt'); // Go to default tab
+      setStatus('App has been reset.');
+      $('.settings').removeAttribute('open'); // Close settings panel
+    }
+    $('#clearAllBtn').addEventListener('click', resetApp);
   </script>
 </body>
 </html>
