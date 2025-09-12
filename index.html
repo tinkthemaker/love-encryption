@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Love Messages ♥ – Local Web Encryptor</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0e0f13" />
+  <link rel="icon" href="heart-192.png" type="image/png">
+  <style>
+    :root{ --bg:#0e0f13;--panel:#151821;--muted:#9aa4b2;--text:#e7ecf3;--acc:#7aa2ff;--acc2:#ff799a;--ok:#66d9a3;--warn:#ffcc66;--danger:#ff7a7a;--border:#232838; --radius:14px;--radius-sm:10px;--shadow:0 10px 30px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.35); --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); --safe-left: env(safe-area-inset-left); --safe-right: env(safe-area-inset-right); font-synthesis-weight:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased; -webkit-tap-highlight-color: transparent; }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;padding-bottom:calc(72px + var(--safe-bottom)); background:radial-gradient(1200px 1200px at 80% -10%, rgba(122,162,255,.08), transparent 40%), radial-gradient(800px 800px at -10% 20%, rgba(255,121,154,.08), transparent 40%), var(--bg); color:var(--text);font:16px/1.45 system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif;}
+    header{max-width:1100px;margin:calc(8px + var(--safe-top)) auto 10px;padding:0 14px;display:flex;align-items:center;gap:12px}
+    .heart{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--acc2),#ff4d81);display:grid;place-items:center;box-shadow:var(--shadow)}
+    .heart svg{filter:drop-shadow(0 2px 6px rgba(255,121,154,.45))}
+    h1{font-size:clamp(18px, 2.2vw, 20px);font-weight:700;margin:0}
+    main{max-width:1100px;margin:0 auto 18px;padding:0 14px}
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.02)), var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .row>section{padding:14px}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+    textarea{width:100%;min-height:240px;resize:vertical;background:#0b0d13;color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;outline:none;transition: border-color .15s, box-shadow .15s;}
+    textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb, var(--acc) 25%, transparent)}
+    .btn{appearance:none;border:1px solid var(--border);background:#10131a;color:var(--text);padding:12px 14px;border-radius:12px;cursor:pointer;transition:.15s ease;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;font-weight:500;white-space:nowrap}
+    .btn:hover:not(:disabled){transform:translateY(-1px);border-color:#35405a}
+    .btn:disabled{cursor:not-allowed;opacity:.5}
+    .btn svg{width:18px;height:18px}
+    .btn .spinner{width:18px;height:18px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .6s linear infinite;display:none}
+    .btn.working .spinner{display:block}
+    .btn.working .icon{display:none}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .btn.acc{background:linear-gradient(180deg,#32489b,#24336f);border-color:#2b3882}
+    .btn.ok{background:linear-gradient(180deg,#21755d,#165b47);border-color:#1a6b54}
+    .btn.ghost{background:transparent}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    input[type=text], input[type=password], input[type=number]{width:100%;background:#0b0d13;color:var(--text);border:1px solid var(--border);border-radius:12px;padding:12px;outline:none;min-height:44px;transition: border-color .15s, box-shadow .15s}
+    input:focus{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb, var(--acc) 25%, transparent)}
+    small.hint{color:var(--muted);font-size:12px}
+    .status{margin-top:10px;font-size:13px;color:var(--muted)}
+    .footer{margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    #strength{height:4px;border-radius:2px;background:var(--border);width:100%;margin-top:8px}
+    #strength-bar{height:100%;width:0;border-radius:2px;background:#ff7a7a;transition:width .25s, background-color .25s}
+    #strength-bar.medium{background-color:#ffcc66}
+    #strength-bar.strong{background-color:#66d9a3}
+    .sticky{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:10px max(10px, var(--safe-left)) calc(10px + var(--safe-bottom)) max(10px, var(--safe-right));background:linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.35) 15%), #0e0f13cc; backdrop-filter: blur(6px);border-top:1px solid #1c2130}
+    .sticky .btn{flex:1}
+    .sticky .rowbar{display:flex;gap:10px}
+    @media (max-width: 900px){ .row{grid-template-columns:1fr} .grid{grid-template-columns:1fr} textarea{min-height:200px} }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="heart" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="#ffe7ee" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s-7.364-4.438-9.543-8.57C.23 8.622 2.31 5 6.02 5c2.003 0 3.33 1.05 3.98 2.17C10.65 6.05 11.978 5 13.98 5c3.71 0 5.79 3.622 3.563 7.43C19.364 16.562 12 21 12 21Z"/></svg></div>
+    <h1>Love Messages ♥ – Local Web Encryptor</h1>
+  </header>
+  <main>
+    <section class="panel" style="padding:14px;margin-bottom:14px">
+      <div class="grid">
+        <div>
+          <label for="pass">Passphrase (shared secret)</label>
+          <input id="pass" type="password" placeholder="e.g., 6–7 Diceware words" autocomplete="new-password"/>
+          <div id="strength"><div id="strength-bar"></div></div>
+        </div>
+        <div>
+          <label for="salt">Salt (auto for encrypt; paste to decrypt)</label>
+          <input id="salt" type="text" placeholder="auto-generated"/>
+          <small class="hint">Base64; also stored inside the ciphertext.</small>
+        </div>
+        <div>
+          <label for="iters">KDF iterations</label>
+          <input id="iters" type="number" inputmode="numeric" min="100000" step="10000" value="200000"/>
+          <small class="hint">Higher = slower but stronger. 200k+ is good.</small>
+        </div>
+      </div>
+      <div class="footer">
+        <button class="btn ghost" id="togglePass">Show</button>
+        <button class="btn" id="genPass">Generate Passphrase</button>
+        <div class="spacer"></div>
+        <span class="status" id="statusKdf">Ready.</span>
+      </div>
+    </section>
+
+    <section class="panel" style="padding:14px">
+      <div class="row">
+        <section>
+          <label for="pt">Plaintext</label>
+          <textarea id="pt" placeholder="Write your love note here…"></textarea>
+          <div class="footer">
+            <button class="btn acc" id="encryptBtn"><span class="icon">🔒</span><span class="spinner"></span>Encrypt →</button>
+            <button class="btn" id="copyCt"><span class="icon">📋</span>Copy Cipher</button>
+            <button class="btn" id="saveCt"><span class="icon">💾</span>Save Cipher (.love)</button>
+          </div>
+        </section>
+        <section>
+          <label for="ct">Ciphertext</label>
+          <textarea id="ct" placeholder="Ciphertext appears here… or paste to decrypt"></textarea>
+          <div class="footer">
+            <button class="btn ok" id="decryptBtn"><span class="icon">🔓</span><span class="spinner"></span>← Decrypt</button>
+            <button class="btn" id="copyPt"><span class="icon">📋</span>Copy Plain</button>
+            <button class="btn" id="openCt"><span class="icon">📂</span>Open Cipher (.love)</button>
+          </div>
+        </section>
+      </div>
+      <div class="status" id="status" style="margin-left:14px">Ready.</div>
+    </section>
+    <p class="status" style="margin-top:8px">All crypto runs <strong>locally in your browser</strong> via the Web Crypto API. Nothing is uploaded.</p>
+  </main>
+
+  <div class="sticky" role="toolbar" aria-label="Quick actions">
+    <div class="rowbar">
+      <button class="btn acc" id="encryptSticky"><span class="icon">🔒</span>Encrypt</button>
+      <button class="btn ok" id="decryptSticky"><span class="icon">🔓</span>Decrypt</button>
+      <button class="btn" id="clearAll"><span class="icon">🗑️</span>Clear All</button>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+  <script> if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js'); </script>
+</body>
+</html>
