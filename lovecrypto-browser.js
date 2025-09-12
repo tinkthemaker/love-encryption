@@ -1,70 +1,111 @@
-// app.js
-import { encrypt as encJS, decrypt as decJS } from './lovecrypto-browser.js';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Love Messages ♥ – Local Web Encryptor</title>
+  <style>
+    /* (CSS from the optimized dark-mode mobile version remains unchanged) */
+  </style>
+</head>
+<body>
+  <!-- (same header, main sections, sticky bar, etc. as before) -->
 
-const $ = s => document.querySelector(s);
-const passEl = $('#pass'), saltEl = $('#salt'), itersEl= $('#iters');
-const ptEl = $('#pt'), ctEl = $('#ct');
-const status = $('#status'), statusKdf = $('#statusKdf');
-const strengthBar = $('#strength-bar');
-const encryptBtn = $('#encryptBtn'), decryptBtn = $('#decryptBtn');
-const encryptSticky = $('#encryptSticky'), decryptSticky = $('#decryptSticky');
+  <script type="module">
+  import { encrypt as encJS, decrypt as decJS } from './lovecrypto-browser.js';
 
-const setStatus = (el, msg, type='muted') => {
-  el.textContent = msg;
-  el.className = 'status';
-  if (type !== 'muted') el.classList.add(type);
-};
+  // -------- DOM helpers --------
+  const $ = sel => document.querySelector(sel);
+  const passEl = $('#pass');
+  const saltEl = $('#salt');
+  const itersEl= $('#iters');
+  const ptEl   = $('#pt');
+  const ctEl   = $('#ct');
+  const status = $('#status');
+  const statusKdf = $('#statusKdf');
 
-async function doEncrypt(){
-  encryptBtn.disabled = true; encryptBtn.classList.add('working');
-  try{
-    const pass = passEl.value.trim();
-    if(!pass) return setStatus(status,'⚠️ Enter a passphrase.','warn');
-    const iters = Math.max(100000, Number(itersEl.value)||200000);
-    const plaintext = ptEl.value;
-    if(!plaintext) return setStatus(status,'⚠️ Type a message to encrypt.','warn');
+  const setStatus = (el, msg)=> el.textContent = msg;
 
-    setStatus(status,'Encrypting…');
-    const bundle = await encJS(pass, plaintext, iters);
-    ctEl.value = JSON.stringify(bundle, null, 2);
-    saltEl.value = bundle.salt;
-    setStatus(status,'✅ Encrypted successfully.','ok');
-    ctEl.scrollIntoView({behavior:'smooth', block:'center'});
-  }catch(e){ setStatus(status,'❌ '+e.message,'danger'); }
-  finally{ encryptBtn.disabled=false; encryptBtn.classList.remove('working'); }
-}
+  // UI: passphrase tools
+  $('#togglePass').addEventListener('click', ()=>{ passEl.type = passEl.type==='password' ? 'text' : 'password'; });
+  $('#genPass').addEventListener('click', ()=>{
+    const syll = ['la','no','ve','ri','ta','mo','na','li','ra','sa','mi','el','do','re','na','ka','shi','lo','zu','fi'];
+    let words=[]; for(let i=0;i<6;i++){ let w=''; for(let j=0;j<3;j++){ w+= syll[Math.floor(Math.random()*syll.length)]; } words.push(w); }
+    passEl.value = words.join('-');
+    setStatus(statusKdf, 'Generated a random passphrase (consider Diceware).');
+  });
 
-async function doDecrypt(){
-  decryptBtn.disabled = true; decryptBtn.classList.add('working');
-  try{
-    const pass = passEl.value.trim();
-    if(!pass) return setStatus(status,'⚠️ Enter the passphrase.','warn');
-    let bundle; try{ bundle = JSON.parse(ctEl.value.trim()); }
-    catch{ return setStatus(status,'❌ Ciphertext must be JSON.','danger'); }
+  // Encrypt using module
+  async function doEncrypt(){
+    try{
+      const pass = passEl.value.trim(); if(!pass){ alert('Enter a passphrase.'); return; }
+      const iters = Math.max(100000, Number(itersEl.value)||200000);
+      const plaintext = ptEl.value; if(!plaintext){ alert('Type a message to encrypt.'); return; }
+      setStatus(status, 'Encrypting…');
+      const bundle = await encJS(pass, plaintext, iters);
+      ctEl.value = JSON.stringify(bundle);
+      saltEl.value = bundle.salt;
+      setStatus(status, 'Done. Ciphertext ready.');
+      ctEl.scrollIntoView({behavior:'smooth', block:'center'});
+    }catch(err){ console.error(err); setStatus(status, 'Encrypt error: ' + err.message); }
+  }
 
-    setStatus(status,'Decrypting…');
-    const msg = await decJS(pass, bundle);
-    ptEl.value = msg;
-    if (bundle.salt) saltEl.value = bundle.salt;
-    if (bundle.iters) itersEl.value = Number(bundle.iters);
-    setStatus(status,'✅ Decrypted successfully.','ok');
-    ptEl.scrollIntoView({behavior:'smooth', block:'center'});
-  }catch(e){ setStatus(status,'❌ Wrong passphrase or corrupted data.','danger'); }
-  finally{ decryptBtn.disabled=false; decryptBtn.classList.remove('working'); }
-}
+  // Decrypt using module
+  async function doDecrypt(){
+    try{
+      const pass = passEl.value.trim(); if(!pass){ alert('Enter a passphrase.'); return; }
+      const raw = ctEl.value.trim(); if(!raw){ alert('Paste a ciphertext JSON.'); return; }
+      let bundle; try{ bundle = JSON.parse(raw); }catch{ alert('Ciphertext must be JSON produced by this page.'); return; }
+      setStatus(status, 'Decrypting…');
+      const msg = await decJS(pass, bundle);
+      ptEl.value = msg;
+      saltEl.value = bundle.salt||'';
+      itersEl.value = Number(bundle.iters||itersEl.value||200000);
+      setStatus(status, 'Decrypted successfully.');
+      ptEl.scrollIntoView({behavior:'smooth', block:'center'});
+    }catch(err){ console.error(err); setStatus(status, 'Decrypt error (wrong passphrase or corrupted data).'); }
+  }
 
-// UI events
-$('#togglePass').addEventListener('click', ()=>{ passEl.type = passEl.type==='password' ? 'text':'password'; });
-$('#genPass').addEventListener('click', ()=>{
-  const syll = ['la','no','ve','ri','ta','mo','na','li','ra','sa','mi','el','do','re','na','ka','shi','lo','zu','fi'];
-  const words = Array.from({length:6},()=>Array.from({length:3},()=>syll[Math.random()*syll.length|0]).join(''));
-  passEl.value = words.join('-'); passEl.dispatchEvent(new Event('input'));
-  setStatus(statusKdf,'💡 Generated a random passphrase.','warn');
-});
+  // Main buttons
+  $('#encryptBtn').addEventListener('click', doEncrypt);
+  $('#decryptBtn').addEventListener('click', doDecrypt);
 
-encryptBtn.addEventListener('click', doEncrypt);
-decryptBtn.addEventListener('click', doDecrypt);
-encryptSticky.addEventListener('click', doEncrypt);
-decryptSticky.addEventListener('click', doDecrypt);
+  // Sticky bar buttons (mobile)
+  $('#encryptSticky').addEventListener('click', doEncrypt);
+  $('#decryptSticky').addEventListener('click', doDecrypt);
+  $('#clearSticky').addEventListener('click', ()=>{ ptEl.value=''; ctEl.value=''; setStatus(status,'Cleared.'); });
 
-// Copy/save/open helpers (same as your version)…
+  // Clipboard helpers
+  $('#copyCt').addEventListener('click', async()=>{
+    try{ await navigator.clipboard.writeText(ctEl.value); setStatus(status,'Ciphertext copied.'); }catch{ setStatus(status,'Clipboard blocked by browser.'); }
+  });
+  $('#copyPt').addEventListener('click', async()=>{
+    try{ await navigator.clipboard.writeText(ptEl.value); setStatus(status,'Plaintext copied.'); }catch{ setStatus(status,'Clipboard blocked by browser.'); }
+  });
+
+  // File save/open
+  $('#saveCt').addEventListener('click', ()=>{
+    const blob = new Blob([ctEl.value||''], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'love-message.love';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $('#openCt').addEventListener('click', ()=>{
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.love,application/json';
+    inp.onchange = async () => {
+      const file = inp.files[0]; if(!file) return;
+      const txt = await file.text();
+      ctEl.value = txt; setStatus(status,'Loaded ciphertext from file.');
+    };
+    inp.click();
+  });
+
+  // Auto-grow textareas on mobile
+  function autoGrow(el){ el.style.height='auto'; el.style.height=Math.min(600, el.scrollHeight)+'px'; }
+  [ptEl, ctEl].forEach(el=>{ el.addEventListener('input', ()=>autoGrow(el)); autoGrow(el); });
+</script>
+</body>
+</html>
