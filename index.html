@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Love Messages ♥</title>
+  <title>Given to Fly ♥</title>
   
   <!-- PWA & Mobile Themeing -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -22,22 +22,39 @@
     * { box-sizing: border-box; }
     body {
       margin: 0; padding: var(--safe-top) 0 calc(20px + var(--safe-bottom));
-      background: radial-gradient(100vw 100vw at 50% 0%, rgba(138, 157, 255, 0.1), transparent 50%), var(--bg);
+      background-color: var(--bg);
       color: var(--text); font: 16px/1.5 system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      overflow-x: hidden; /* Prevents aurora from creating scrollbars */
     }
-    main { max-width: 500px; margin: 0 auto; padding: 0 16px; }
+    main { max-width: 500px; margin: 0 auto; padding: 0 16px; position: relative; z-index: 2; }
+    
+    /* --- NEW: Aurora Background --- */
+    .aurora { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; }
+    .aurora-shape { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.2; }
+    .shape1 { width: 400px; height: 400px; background-color: var(--acc); top: -50px; left: -100px; animation: move1 20s infinite alternate; }
+    .shape2 { width: 500px; height: 500px; background-color: var(--acc2); bottom: -100px; right: -150px; animation: move2 25s infinite alternate; }
+    @keyframes move1 { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(100px, 50px) rotate(45deg); } }
+    @keyframes move2 { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(-80px, -40px) rotate(-60deg); } }
+
     header { display: flex; align-items: center; gap: 12px; padding: 20px 0; }
-    .heart-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--acc2), #ff4d81); display: grid; place-items: center; box-shadow: var(--shadow); flex-shrink: 0; }
+    .heart-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--acc2), #ff4d81); display: grid; place-items: center; box-shadow: var(--shadow); flex-shrink: 0; animation: float 4s ease-in-out infinite; }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
     h1 { font-size: 22px; font-weight: 700; margin: 0; }
+    
+    /* --- NEW: Settings Animation --- */
     .settings { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; box-shadow: var(--shadow); }
     .settings summary { display: flex; align-items: center; gap: 10px; padding: 16px; cursor: pointer; font-weight: 600; outline: none; }
     .settings summary::-webkit-details-marker { display: none; }
-    .settings-content { padding: 0 16px 16px; }
+    .settings-content { overflow: hidden; max-height: 0; transition: max-height 0.5s ease-out, padding 0.5s ease-out; }
+    .settings[open] .settings-content { max-height: 500px; padding: 0 16px 16px; transition: max-height 0.5s ease-in; }
     .settings[open] summary { border-bottom: 1px solid var(--border); }
-    .form-group { margin-bottom: 16px; }
+    
+    .form-group { margin-bottom: 16px; position: relative; }
     label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
     input { width: 100%; background: #0b0d13; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; font-size: 16px; outline: none; transition: .15s ease; }
     input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 25%, transparent); }
+    #pass { padding-right: 50px; }
+    #togglePassBtn { position: absolute; right: 1px; bottom: 43px; top: 33px; width: 48px; background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 22px; padding: 0; display: grid; place-items: center; }
     #strength { height: 4px; border-radius: 2px; background: #0b0d13; margin-top: 8px; }
     #strength-bar { height: 100%; width: 0; border-radius: 2px; background: var(--danger); transition: width .25s, background-color .25s; }
     #strength-bar.medium { background-color: var(--warn); }
@@ -48,18 +65,34 @@
     .tab-btn.decrypt.active { border-color: var(--ok); box-shadow: 0 0 15px color-mix(in srgb, var(--ok) 15%, transparent); }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-    .message-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+
+    .instruction-text {
+      font-size: 14px;
+      color: var(--muted);
+      margin: -4px 0 16px;
+    }
+
+    /* --- NEW: Interactive Glow Effect --- */
+    .message-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: box-shadow .3s ease, border-color .3s ease; }
+    .message-card:focus-within { border-color: var(--acc); box-shadow: 0 0 20px color-mix(in srgb, var(--acc) 20%, transparent); }
+    #tab-decrypt .message-card:focus-within { border-color: var(--ok); box-shadow: 0 0 20px color-mix(in srgb, var(--ok) 20%, transparent); }
+
     textarea { width: 100%; min-height: 200px; resize: vertical; background: transparent; color: var(--text); border: none; padding: 0; font-size: 17px; outline: none; line-height: 1.6; }
     .action-btn { width: 100%; appearance: none; border: none; border-radius: var(--radius); padding: 16px; margin-top: 16px; font-size: 18px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: var(--shadow); transition: .15s ease; }
     .action-btn:active { transform: scale(0.98); }
     .action-btn.encrypt { background: linear-gradient(135deg, var(--acc), #617bff); }
+    .action-btn.encrypt:hover { box-shadow: var(--shadow), 0 0 25px color-mix(in srgb, var(--acc) 40%, transparent); }
     .action-btn.decrypt { background: linear-gradient(135deg, var(--ok), #3cbd83); }
+    .action-btn.decrypt:hover { box-shadow: var(--shadow), 0 0 25px color-mix(in srgb, var(--ok) 40%, transparent); }
     .btn { appearance: none; background: #0b0d13; border: 1px solid var(--border); color: var(--muted); border-radius: var(--radius-sm); padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: .15s ease; }
     .btn:hover { color: var(--text); border-color: var(--muted); }
-    .result-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); display: grid; place-items: center; opacity: 0; visibility: hidden; transition: .25s ease; z-index: 100; }
+    
+    /* --- NEW: Modal Animation --- */
+    .result-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); display: grid; place-items: center; opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility .3s; z-index: 100; }
     .result-overlay.active { opacity: 1; visibility: visible; }
-    .result-card { width: calc(100% - 32px); max-width: 500px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,.5); transform: scale(0.95); transition: .25s ease; }
-    .result-overlay.active .result-card { transform: scale(1); }
+    .result-card { width: calc(100% - 32px); max-width: 500px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,.5); transform: translateY(20px) scale(0.98); opacity: 0; transition: transform .3s ease, opacity .3s ease; }
+    .result-overlay.active .result-card { transform: translateY(0) scale(1); opacity: 1; }
+    
     .result-card h2 { margin: 0 0 12px; font-size: 20px; }
     .result-card textarea { background: #0b0d13; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; min-height: 140px; font-size: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     .result-footer { display: flex; gap: 12px; margin-top: 16px; }
@@ -70,11 +103,15 @@
   </style>
 </head>
 <body>
+  <div class="aurora">
+    <div class="aurora-shape shape1"></div>
+    <div class="aurora-shape shape2"></div>
+  </div>
 
   <main>
     <header>
-      <div class="heart-icon">❤️</div>
-      <h1>Love Messages</h1>
+      <div class="heart-icon">🕊️</div>
+      <h1>Given to Fly</h1>
     </header>
 
     <details class="settings">
@@ -83,11 +120,8 @@
         <div class="form-group">
           <label for="pass">Passphrase (Your Secret)</label>
           <input id="pass" type="password" placeholder="e.g., a secret only you two know" autocomplete="new-password">
+          <button id="togglePassBtn">👁️</button>
           <div id="strength"><div id="strength-bar"></div></div>
-        </div>
-        <div class="form-group">
-          <label for="iters">Security Level (Iterations)</label>
-          <input id="iters" type="number" value="200000" min="100000" step="10000">
         </div>
         <button id="clearAllBtn" class="btn" style="width:100%">🗑️ Clear All</button>
       </div>
@@ -101,7 +135,8 @@
     <div id="tab-encrypt" class="tab-content active">
       <div class="message-card">
         <label for="pt">Your secret message...</label>
-        <textarea id="pt" placeholder="Write your love note here…"></textarea>
+        <p class="instruction-text">Set a passphrase in Settings, type your message, then encrypt.</p>
+        <textarea id="pt"></textarea>
         <button id="encryptBtn" class="action-btn encrypt">Encrypt & Lock</button>
       </div>
     </div>
@@ -143,6 +178,9 @@
       from: str => Uint8Array.from(atob(str), c => c.charCodeAt(0)).buffer
     };
     const rand = n => crypto.getRandomValues(new Uint8Array(n));
+
+    const KDF_ITERATIONS = 310000;
+
     function setStatus(msg, type = 'muted') {
       const el = $('#status'); el.textContent = msg; el.className = 'status';
       if (type !== 'muted') el.classList.add(type);
@@ -151,20 +189,20 @@
       const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
       return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
     }
-    async function encryptMessage(pass, plaintext, iterations) {
+    async function encryptMessage(pass, plaintext) {
       const salt = rand(16); const iv = rand(12);
-      const key = await deriveKey(pass, salt, iterations);
+      const key = await deriveKey(pass, salt, KDF_ITERATIONS);
       const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
-      return { v: 1, alg: 'AES-GCM-256/PBKDF2-SHA256', iv: b64.to(iv), salt: b64.to(salt), iters: iterations, ct: b64.to(ct) };
+      return { v: 1, alg: 'AES-GCM-256/PBKDF2-SHA256', iv: b64.to(iv), salt: b64.to(salt), iters: KDF_ITERATIONS, ct: b64.to(ct) };
     }
     async function decryptMessage(pass, bundle) {
       const iv = b64.from(bundle.iv); const salt = b64.from(bundle.salt);
-      const iterations = Number(bundle.iters || 200000);
+      const iterations = Number(bundle.iters || KDF_ITERATIONS);
       const key = await deriveKey(pass, salt, iterations);
       const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, b64.from(bundle.ct));
       return dec.decode(ptBuf);
     }
-    const passEl = $('#pass'), itersEl = $('#iters');
+    const passEl = $('#pass');
     const ptEl = $('#pt'), ctEl = $('#ct');
     const strengthBar = $('#strength-bar');
     const resultOverlay = $('#resultOverlay');
@@ -180,15 +218,10 @@
     $('#resultDoneBtn').addEventListener('click', hideResult);
     resultOverlay.addEventListener('click', (e) => { if (e.target === resultOverlay) hideResult(); });
     
-    // --- CORRECTED COPY LOGIC ---
     $('#resultCopyBtn').addEventListener('click', async (e) => {
-      // Directly reference the text area's content. This prevents any UI elements
-      // from being accidentally included.
       const contentToCopy = resultContentEl.value;
       if (!contentToCopy) return;
-
       await navigator.clipboard.writeText(contentToCopy);
-      
       const btn = e.currentTarget; 
       const originalText = btn.textContent;
       btn.textContent = 'Copied!';
@@ -199,9 +232,8 @@
       try {
         const pass = passEl.value.trim(); if (!pass) { setStatus('Please set a passphrase in Settings.', 'danger'); return; }
         const plaintext = ptEl.value.trim(); if (!plaintext) { setStatus('Please write a message to encrypt.', 'danger'); return; }
-        const iters = Math.max(100000, Number(itersEl.value) || 200000);
         setStatus('Locking your secret...');
-        const bundle = await encryptMessage(pass, plaintext, iters);
+        const bundle = await encryptMessage(pass, plaintext);
         showResult('Secret Message Ready', JSON.stringify(bundle));
         setStatus('Your message is now encrypted.');
       } catch (err) { setStatus('Encryption failed. ' + err.message, 'danger'); }
@@ -243,7 +275,16 @@
       $('.settings').removeAttribute('open');
     }
     $('#clearAllBtn').addEventListener('click', resetApp);
+
+    const togglePassBtn = $('#togglePassBtn');
+    togglePassBtn.addEventListener('click', () => {
+      const isPassword = passEl.type === 'password';
+      passEl.type = isPassword ? 'text' : 'password';
+      togglePassBtn.textContent = isPassword ? '🙈' : '👁️';
+    });
   </script>
 </body>
 </html>
+
+
 
