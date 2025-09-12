@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Love Messages ♥</title>
   
+  <!-- PWA & Mobile Themeing -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#101118" />
   <link rel="apple-touch-icon" href="heart-192.png">
@@ -167,19 +168,33 @@
     const ptEl = $('#pt'), ctEl = $('#ct');
     const strengthBar = $('#strength-bar');
     const resultOverlay = $('#resultOverlay');
+    const resultTitleEl = $('#resultTitle');
+    const resultContentEl = $('#resultContent');
+
     function showResult(title, content) {
-      $('#resultTitle').textContent = title; $('#resultContent').value = content;
+      resultTitleEl.textContent = title; 
+      resultContentEl.value = content;
       resultOverlay.classList.add('active');
     }
     function hideResult() { resultOverlay.classList.remove('active'); }
     $('#resultDoneBtn').addEventListener('click', hideResult);
     resultOverlay.addEventListener('click', (e) => { if (e.target === resultOverlay) hideResult(); });
+    
+    // --- CORRECTED COPY LOGIC ---
     $('#resultCopyBtn').addEventListener('click', async (e) => {
-      await navigator.clipboard.writeText($('#resultContent').value);
-      const btn = e.currentTarget; const originalText = btn.textContent;
+      // Directly reference the text area's content. This prevents any UI elements
+      // from being accidentally included.
+      const contentToCopy = resultContentEl.value;
+      if (!contentToCopy) return;
+
+      await navigator.clipboard.writeText(contentToCopy);
+      
+      const btn = e.currentTarget; 
+      const originalText = btn.textContent;
       btn.textContent = 'Copied!';
       setTimeout(() => { btn.textContent = originalText; }, 1500);
     });
+
     async function doEncrypt() {
       try {
         const pass = passEl.value.trim(); if (!pass) { setStatus('Please set a passphrase in Settings.', 'danger'); return; }
@@ -220,18 +235,15 @@
       if (scorePercent > 75) strengthBar.classList.add('strong'); else if (scorePercent > 40) strengthBar.classList.add('medium');
       strengthBar.style.width = `${scorePercent}%`;
     });
-
-    // --- NEW: Reset App Functionality ---
     function resetApp() {
-      ptEl.value = '';
-      ctEl.value = '';
-      passEl.value = '';
-      passEl.dispatchEvent(new Event('input')); // Reset strength meter
-      switchTab('encrypt'); // Go to default tab
+      ptEl.value = ''; ctEl.value = ''; passEl.value = '';
+      passEl.dispatchEvent(new Event('input'));
+      switchTab('encrypt');
       setStatus('App has been reset.');
-      $('.settings').removeAttribute('open'); // Close settings panel
+      $('.settings').removeAttribute('open');
     }
     $('#clearAllBtn').addEventListener('click', resetApp);
   </script>
 </body>
 </html>
+
