@@ -3,66 +3,225 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Love Messages ♥ – Local Web Encryptor</title>
+  <title>Love Messages ♥</title>
+  
+  <!-- PWA & Mobile Themeing -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#0e0f13" />
+  <meta name="theme-color" content="#101118" />
+  <link rel="apple-touch-icon" href="heart-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" href="heart-192.png" type="image/png">
+
   <style>
-    /* --- styles trimmed to essentials, same as your dark-mode version --- */
-    :root{ --bg:#0e0f13;--panel:#151821;--muted:#9aa4b2;--text:#e7ecf3;--acc:#7aa2ff;--acc2:#ff799a;--ok:#66d9a3;--warn:#ffcc66;--danger:#ff7a7a;--border:#232838; --radius:14px;--radius-sm:10px;--shadow:0 10px 30px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.35);}
-    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,Segoe UI,Roboto,Inter,Arial,sans-serif;}
-    header{max-width:1100px;margin:20px auto;padding:0 14px;display:flex;align-items:center;gap:12px}
-    .heart{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--acc2),#ff4d81);display:grid;place-items:center;box-shadow:var(--shadow)}
-    main{max-width:1100px;margin:0 auto 18px;padding:0 14px}
-    .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px}
-    textarea,input{width:100%;background:#0b0d13;color:var(--text);border:1px solid var(--border);border-radius:12px;padding:12px}
-    .btn{border:1px solid var(--border);background:#10131a;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
-    .sticky{position:fixed;bottom:0;left:0;right:0;background:#0e0f13cc;padding:10px;display:flex;gap:10px;justify-content:center}
-    .sticky .btn{flex:1}
+    :root {
+      --bg: #101118; --panel: #1b1d29; --muted: #8a93a5; --text: #e7ecf3; --acc: #8a9dff; --acc2: #ff799a; --ok: #66d9a3; --warn: #ffcc66; --danger: #ff7a7a; --border: #2c3040; --radius: 16px; --radius-sm: 12px; --shadow: 0 10px 30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.25);
+      --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom);
+      font-synthesis-weight: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: var(--safe-top) 0 calc(20px + var(--safe-bottom));
+      background: radial-gradient(100vw 100vw at 50% 0%, rgba(138, 157, 255, 0.1), transparent 50%), var(--bg);
+      color: var(--text); font: 16px/1.5 system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif;
+    }
+    main { max-width: 500px; margin: 0 auto; padding: 0 16px; }
+    header { display: flex; align-items: center; gap: 12px; padding: 20px 0; }
+    .heart-icon { width: 36px; height: 36px; border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--acc2), #ff4d81); display: grid; place-items: center; box-shadow: var(--shadow); flex-shrink: 0; }
+    h1 { font-size: 22px; font-weight: 700; margin: 0; }
+    .settings { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; box-shadow: var(--shadow); }
+    .settings summary { display: flex; align-items: center; gap: 10px; padding: 16px; cursor: pointer; font-weight: 600; outline: none; }
+    .settings summary::-webkit-details-marker { display: none; }
+    .settings-content { padding: 0 16px 16px; }
+    .settings[open] summary { border-bottom: 1px solid var(--border); }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
+    input { width: 100%; background: #0b0d13; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; font-size: 16px; outline: none; transition: .15s ease; }
+    input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 25%, transparent); }
+    #strength { height: 4px; border-radius: 2px; background: #0b0d13; margin-top: 8px; }
+    #strength-bar { height: 100%; width: 0; border-radius: 2px; background: var(--danger); transition: width .25s, background-color .25s; }
+    #strength-bar.medium { background-color: var(--warn); }
+    #strength-bar.strong { background-color: var(--ok); }
+    .tabs-nav { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab-btn { flex: 1; appearance: none; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); padding: 14px; font-size: 16px; font-weight: 600; cursor: pointer; transition: .2s ease; }
+    .tab-btn.active { color: var(--text); border-color: var(--acc); box-shadow: 0 0 15px color-mix(in srgb, var(--acc) 15%, transparent); }
+    .tab-btn.decrypt.active { border-color: var(--ok); box-shadow: 0 0 15px color-mix(in srgb, var(--ok) 15%, transparent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .message-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    textarea { width: 100%; min-height: 200px; resize: vertical; background: transparent; color: var(--text); border: none; padding: 0; font-size: 17px; outline: none; line-height: 1.6; }
+    .action-btn { width: 100%; appearance: none; border: none; border-radius: var(--radius); padding: 16px; margin-top: 16px; font-size: 18px; font-weight: 700; color: #fff; cursor: pointer; box-shadow: var(--shadow); transition: .15s ease; }
+    .action-btn:active { transform: scale(0.98); }
+    .action-btn.encrypt { background: linear-gradient(135deg, var(--acc), #617bff); }
+    .action-btn.decrypt { background: linear-gradient(135deg, var(--ok), #3cbd83); }
+    .result-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); display: grid; place-items: center; opacity: 0; visibility: hidden; transition: .25s ease; z-index: 100; }
+    .result-overlay.active { opacity: 1; visibility: visible; }
+    .result-card { width: calc(100% - 32px); max-width: 500px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,.5); transform: scale(0.95); transition: .25s ease; }
+    .result-overlay.active .result-card { transform: scale(1); }
+    .result-card h2 { margin: 0 0 12px; font-size: 20px; }
+    .result-card textarea { background: #0b0d13; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; min-height: 140px; font-size: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .result-footer { display: flex; gap: 12px; margin-top: 16px; }
+    .result-footer .btn { flex: 1; appearance: none; background: #0b0d13; border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: var(--radius-sm); font-size: 16px; font-weight: 600; cursor: pointer; }
+    .result-footer .btn.primary { background: var(--acc); color: #fff; border-color: transparent; }
+    .status { text-align: center; color: var(--muted); font-size: 14px; padding: 10px; }
+    .status.danger { color: var(--danger); }
   </style>
 </head>
 <body>
-  <header>
-    <div class="heart" aria-hidden="true">❤️</div>
-    <h1>Love Messages ♥ – Local Web Encryptor</h1>
-  </header>
 
   <main>
-    <section class="panel">
-      <label for="pass">Passphrase</label>
-      <input id="pass" type="password" placeholder="e.g., 6–7 Diceware words" />
-      <div id="strength"><div id="strength-bar"></div></div>
-      <label for="iters">KDF iterations</label>
-      <input id="iters" type="number" value="200000" min="100000" step="10000" />
-    </section>
+    <header>
+      <div class="heart-icon">❤️</div>
+      <h1>Love Messages</h1>
+    </header>
 
-    <section class="panel">
-      <label for="pt">Plaintext</label>
-      <textarea id="pt" placeholder="Write your love note here…"></textarea>
-      <button class="btn" id="encryptBtn">Encrypt →</button>
-      <button class="btn" id="copyCt">Copy Cipher</button>
-    </section>
+    <details class="settings">
+      <summary>⚙️ Settings</summary>
+      <div class="settings-content">
+        <div class="form-group">
+          <label for="pass">Passphrase (Your Secret)</label>
+          <input id="pass" type="password" placeholder="e.g., a secret only you two know" autocomplete="new-password">
+          <div id="strength"><div id="strength-bar"></div></div>
+        </div>
+        <div class="form-group">
+          <label for="iters">Security Level (Iterations)</label>
+          <input id="iters" type="number" value="200000" min="100000" step="10000">
+        </div>
+      </div>
+    </details>
 
-    <section class="panel">
-      <label for="ct">Ciphertext</label>
-      <textarea id="ct" placeholder="Paste ciphertext here to decrypt…"></textarea>
-      <button class="btn" id="decryptBtn">← Decrypt</button>
-      <button class="btn" id="copyPt">Copy Plain</button>
-    </section>
-    <p id="status">Ready.</p>
+    <nav class="tabs-nav">
+      <button id="nav-encrypt" class="tab-btn active">Encrypt</button>
+      <button id="nav-decrypt" class="tab-btn decrypt">Decrypt</button>
+    </nav>
+
+    <div id="tab-encrypt" class="tab-content active">
+      <div class="message-card">
+        <label for="pt">Your secret message...</label>
+        <textarea id="pt" placeholder="Write your love note here…"></textarea>
+        <button id="encryptBtn" class="action-btn encrypt">Encrypt & Lock</button>
+      </div>
+    </div>
+
+    <div id="tab-decrypt" class="tab-content">
+      <div class="message-card">
+        <label for="ct">Paste the secret message...</label>
+        <textarea id="ct" placeholder="Paste the encrypted code here to unlock the message."></textarea>
+        <button id="decryptBtn" class="action-btn decrypt">Decrypt & Reveal</button>
+      </div>
+    </div>
+    
+    <p id="status" class="status"></p>
   </main>
-
-  <div class="sticky">
-    <button class="btn" id="encryptSticky">Encrypt</button>
-    <button class="btn" id="decryptSticky">Decrypt</button>
-    <button class="btn" id="clearAll">Clear All</button>
+  
+  <div id="resultOverlay" class="result-overlay">
+    <div class="result-card">
+      <h2 id="resultTitle"></h2>
+      <textarea id="resultContent" readonly></textarea>
+      <div class="result-footer">
+        <button id="resultCopyBtn" class="btn primary">Copy</button>
+        <button id="resultDoneBtn" class="btn">Done</button>
+      </div>
+    </div>
   </div>
 
-  <script type="module" src="app.js"></script>
   <script>
+    // Register the service worker for PWA functionality
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js');
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').then(reg => {
+          console.log('Service worker registered.', reg);
+        });
+      });
     }
+
+    // --- All crypto and UI logic goes here (same as before) ---
+    const $ = sel => document.querySelector(sel);
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+    const b64 = {
+      to: buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replaceAll('\n',''),
+      from: str => Uint8Array.from(atob(str), c => c.charCodeAt(0)).buffer
+    };
+    const rand = n => crypto.getRandomValues(new Uint8Array(n));
+    function setStatus(msg, type = 'muted') {
+      const el = $('#status'); el.textContent = msg; el.className = 'status';
+      if (type !== 'muted') el.classList.add(type);
+    }
+    async function deriveKey(pass, salt, iterations) {
+      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+      return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    }
+    async function encryptMessage(pass, plaintext, iterations) {
+      const salt = rand(16); const iv = rand(12);
+      const key = await deriveKey(pass, salt, iterations);
+      const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+      return { v: 1, alg: 'AES-GCM-256/PBKDF2-SHA256', iv: b64.to(iv), salt: b64.to(salt), iters: iterations, ct: b64.to(ct) };
+    }
+    async function decryptMessage(pass, bundle) {
+      const iv = b64.from(bundle.iv); const salt = b64.from(bundle.salt);
+      const iterations = Number(bundle.iters || 200000);
+      const key = await deriveKey(pass, salt, iterations);
+      const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, b64.from(bundle.ct));
+      return dec.decode(ptBuf);
+    }
+    const passEl = $('#pass'), itersEl = $('#iters');
+    const ptEl = $('#pt'), ctEl = $('#ct');
+    const strengthBar = $('#strength-bar');
+    const resultOverlay = $('#resultOverlay');
+    function showResult(title, content) {
+      $('#resultTitle').textContent = title; $('#resultContent').value = content;
+      resultOverlay.classList.add('active');
+    }
+    function hideResult() { resultOverlay.classList.remove('active'); }
+    $('#resultDoneBtn').addEventListener('click', hideResult);
+    resultOverlay.addEventListener('click', (e) => { if (e.target === resultOverlay) hideResult(); });
+    $('#resultCopyBtn').addEventListener('click', async (e) => {
+      await navigator.clipboard.writeText($('#resultContent').value);
+      const btn = e.currentTarget; const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = originalText; }, 1500);
+    });
+    async function doEncrypt() {
+      try {
+        const pass = passEl.value.trim(); if (!pass) { setStatus('Please set a passphrase in Settings.', 'danger'); return; }
+        const plaintext = ptEl.value.trim(); if (!plaintext) { setStatus('Please write a message to encrypt.', 'danger'); return; }
+        const iters = Math.max(100000, Number(itersEl.value) || 200000);
+        setStatus('Locking your secret...');
+        const bundle = await encryptMessage(pass, plaintext, iters);
+        showResult('Secret Message Ready', JSON.stringify(bundle));
+        setStatus('Your message is now encrypted.');
+      } catch (err) { setStatus('Encryption failed. ' + err.message, 'danger'); }
+    }
+    async function doDecrypt() {
+      try {
+        const pass = passEl.value.trim(); if (!pass) { setStatus('Please set a passphrase in Settings.', 'danger'); return; }
+        const raw = ctEl.value.trim(); if (!raw) { setStatus('Please paste a message to decrypt.', 'danger'); return; }
+        let bundle; try { bundle = JSON.parse(raw); } catch { setStatus('Ciphertext is not valid.', 'danger'); return; }
+        setStatus('Unlocking your secret...');
+        const msg = await decryptMessage(pass, bundle);
+        showResult('Message Revealed!', msg);
+        setStatus('Decryption successful!');
+      } catch (err) { setStatus('Decryption failed. Wrong passphrase?', 'danger'); }
+    }
+    $('#encryptBtn').addEventListener('click', doEncrypt);
+    $('#decryptBtn').addEventListener('click', doDecrypt);
+    const tabs = { encrypt: { nav: $('#nav-encrypt'), content: $('#tab-encrypt') }, decrypt: { nav: $('#nav-decrypt'), content: $('#tab-decrypt') } };
+    function switchTab(tabName) {
+      Object.values(tabs).forEach(t => { t.nav.classList.remove('active'); t.content.classList.remove('active'); });
+      tabs[tabName].nav.classList.add('active'); tabs[tabName].content.classList.add('active');
+    }
+    tabs.encrypt.nav.addEventListener('click', () => switchTab('encrypt'));
+    tabs.decrypt.nav.addEventListener('click', () => switchTab('decrypt'));
+    passEl.addEventListener('input', () => {
+      const pass = passEl.value; let score = 0;
+      if (pass.length > 8) score++; if (pass.length > 12) score++;
+      if (/[A-Z]/.test(pass)) score++; if (/[a-z]/.test(pass)) score++;
+      if (/[0-9]/.test(pass)) score++; if (/[^A-Za-z0-9]/.test(pass)) score++;
+      strengthBar.className = ''; const scorePercent = (score / 6) * 100;
+      if (scorePercent > 75) strengthBar.classList.add('strong'); else if (scorePercent > 40) strengthBar.classList.add('medium');
+      strengthBar.style.width = `${scorePercent}%`;
+    });
   </script>
 </body>
 </html>
