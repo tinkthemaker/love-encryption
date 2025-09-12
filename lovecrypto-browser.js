@@ -1,111 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Love Messages ♥ – Local Web Encryptor</title>
-  <style>
-    /* (CSS from the optimized dark-mode mobile version remains unchanged) */
-  </style>
-</head>
-<body>
-  <!-- (same header, main sections, sticky bar, etc. as before) -->
-
-  <script type="module">
-  import { encrypt as encJS, decrypt as decJS } from './lovecrypto-browser.js';
-
-  // -------- DOM helpers --------
-  const $ = sel => document.querySelector(sel);
-  const passEl = $('#pass');
-  const saltEl = $('#salt');
-  const itersEl= $('#iters');
-  const ptEl   = $('#pt');
-  const ctEl   = $('#ct');
-  const status = $('#status');
-  const statusKdf = $('#statusKdf');
-
-  const setStatus = (el, msg)=> el.textContent = msg;
-
-  // UI: passphrase tools
-  $('#togglePass').addEventListener('click', ()=>{ passEl.type = passEl.type==='password' ? 'text' : 'password'; });
-  $('#genPass').addEventListener('click', ()=>{
-    const syll = ['la','no','ve','ri','ta','mo','na','li','ra','sa','mi','el','do','re','na','ka','shi','lo','zu','fi'];
-    let words=[]; for(let i=0;i<6;i++){ let w=''; for(let j=0;j<3;j++){ w+= syll[Math.floor(Math.random()*syll.length)]; } words.push(w); }
-    passEl.value = words.join('-');
-    setStatus(statusKdf, 'Generated a random passphrase (consider Diceware).');
-  });
-
-  // Encrypt using module
-  async function doEncrypt(){
-    try{
-      const pass = passEl.value.trim(); if(!pass){ alert('Enter a passphrase.'); return; }
-      const iters = Math.max(100000, Number(itersEl.value)||200000);
-      const plaintext = ptEl.value; if(!plaintext){ alert('Type a message to encrypt.'); return; }
-      setStatus(status, 'Encrypting…');
-      const bundle = await encJS(pass, plaintext, iters);
-      ctEl.value = JSON.stringify(bundle);
-      saltEl.value = bundle.salt;
-      setStatus(status, 'Done. Ciphertext ready.');
-      ctEl.scrollIntoView({behavior:'smooth', block:'center'});
-    }catch(err){ console.error(err); setStatus(status, 'Encrypt error: ' + err.message); }
-  }
-
-  // Decrypt using module
-  async function doDecrypt(){
-    try{
-      const pass = passEl.value.trim(); if(!pass){ alert('Enter a passphrase.'); return; }
-      const raw = ctEl.value.trim(); if(!raw){ alert('Paste a ciphertext JSON.'); return; }
-      let bundle; try{ bundle = JSON.parse(raw); }catch{ alert('Ciphertext must be JSON produced by this page.'); return; }
-      setStatus(status, 'Decrypting…');
-      const msg = await decJS(pass, bundle);
-      ptEl.value = msg;
-      saltEl.value = bundle.salt||'';
-      itersEl.value = Number(bundle.iters||itersEl.value||200000);
-      setStatus(status, 'Decrypted successfully.');
-      ptEl.scrollIntoView({behavior:'smooth', block:'center'});
-    }catch(err){ console.error(err); setStatus(status, 'Decrypt error (wrong passphrase or corrupted data).'); }
-  }
-
-  // Main buttons
-  $('#encryptBtn').addEventListener('click', doEncrypt);
-  $('#decryptBtn').addEventListener('click', doDecrypt);
-
-  // Sticky bar buttons (mobile)
-  $('#encryptSticky').addEventListener('click', doEncrypt);
-  $('#decryptSticky').addEventListener('click', doDecrypt);
-  $('#clearSticky').addEventListener('click', ()=>{ ptEl.value=''; ctEl.value=''; setStatus(status,'Cleared.'); });
-
-  // Clipboard helpers
-  $('#copyCt').addEventListener('click', async()=>{
-    try{ await navigator.clipboard.writeText(ctEl.value); setStatus(status,'Ciphertext copied.'); }catch{ setStatus(status,'Clipboard blocked by browser.'); }
-  });
-  $('#copyPt').addEventListener('click', async()=>{
-    try{ await navigator.clipboard.writeText(ptEl.value); setStatus(status,'Plaintext copied.'); }catch{ setStatus(status,'Clipboard blocked by browser.'); }
-  });
-
-  // File save/open
-  $('#saveCt').addEventListener('click', ()=>{
-    const blob = new Blob([ctEl.value||''], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'love-message.love';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  });
-  $('#openCt').addEventListener('click', ()=>{
-    const inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = '.love,application/json';
-    inp.onchange = async () => {
-      const file = inp.files[0]; if(!file) return;
-      const txt = await file.text();
-      ctEl.value = txt; setStatus(status,'Loaded ciphertext from file.');
-    };
-    inp.click();
-  });
-
-  // Auto-grow textareas on mobile
-  function autoGrow(el){ el.style.height='auto'; el.style.height=Math.min(600, el.scrollHeight)+'px'; }
-  [ptEl, ctEl].forEach(el=>{ el.addEventListener('input', ()=>autoGrow(el)); autoGrow(el); });
-</script>
-</body>
-</html>
+// Crypto module (ESM) for browser
+export async function encrypt(pass, plaintext, iterations = 200000) {
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(pass, salt, iterations);
+  const ctBuf = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, enc.encode(plaintext));
+  return { v:1, alg:'AES-GCM-256/PBKDF2-SHA256', iv: b64e(iv), salt: b64e(salt), iters: iterations, ct: b64e(new Uint8Array(ctBuf)) };
+}
+export async function decrypt(pass, bundle){
+  const dec = new TextDecoder();
+  const iv = b64d(bundle.iv);
+  const salt = b64d(bundle.salt);
+  const key = await deriveKey(pass, salt, Number(bundle.iters||200000));
+  const ptBuf = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, b64d(bundle.ct));
+  return dec.decode(ptBuf);
+}
+async function deriveKey(pass, salt, iterations){
+  const enc = new TextEncoder();
+  const keyMat = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', hash:'SHA-256', salt, iterations }, keyMat, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+const b64e = u8 => btoa(String.fromCharCode(...u8));
+const b64d = str => Uint8Array.from(atob(str), c=>c.charCodeAt(0));
