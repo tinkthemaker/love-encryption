@@ -204,4 +204,16 @@ passEl.addEventListener('input', updatePasswordStrength);
 resultCopyBtn.addEventListener('click', copyResultToClipboard);
 resultDoneBtn.addEventListener('click', hideResult);
 resultOverlay.addEventListener('click', (e) => {
-  if (e.target === resultOverlay) hide
+  if (e.target === resultOverlay) hideResult();
+});
+navEncrypt.addEventListener('click', () => switchTab('encrypt'));
+navDecrypt.addEventListener('click', () => switchTab('decrypt'));
+
+// Clear message box on click
+ptEl.addEventListener('focus', () => {
+  ptEl.value = '';
+});
+
+ctEl.addEventListener('focus', () => {
+  ctEl.value = '';
+});
