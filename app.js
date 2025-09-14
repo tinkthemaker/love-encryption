@@ -243,6 +243,11 @@ ptEl.addEventListener('blur', () => {
   }
 });
 
+// Clear decrypt box on focus
+ctEl.addEventListener('focus', () => {
+  ctEl.value = '';
+});
+
 // Set initial placeholder color
 document.addEventListener('DOMContentLoaded', () => {
   if (ptEl.value === instructionText) {
