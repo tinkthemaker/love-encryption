@@ -20,46 +20,28 @@
     <div class="aurora-shape shape2"></div>
   </div>
 
-  <main>
+<main>
     <header>
       <div class="heart-icon">🕊️</div>
       <h1>Given to Fly</h1>
     </header>
 
     <details class="settings">
-      <summary>⚙️ Settings</summary>
-      <div class="settings-content">
-        <div class="form-group">
-          <label for="pass">Passphrase (Your Secret)</label>
-          <input id="pass" type="password" placeholder="e.g., a secret only you two know" autocomplete="new-password">
-          <button id="togglePassBtn">👁️</button>
-          <div id="strength"><div id="strength-bar"></div></div>
-        </div>
-        <button id="clearAllBtn" class="btn" style="width:100%">🗑️ Clear All</button>
-      </div>
-    </details>
+      </details>
 
     <nav class="tabs-nav">
-      <button id="nav-encrypt" class="tab-btn active">Encrypt</button>
-      <button id="nav-decrypt" class="tab-btn decrypt">Decrypt</button>
-    </nav>
+      </nav>
 
     <div id="tab-encrypt" class="tab-content active">
       <div class="message-card">
         <label for="pt">Your secret message...</label>
-        <p class="instruction-text">Set a passphrase in Settings, type your message, then encrypt.</p>
-        <textarea id="pt"></textarea>
+        <textarea id="pt">Set a passphrase in Settings, type your message, then encrypt.</textarea>
         <button id="encryptBtn" class="action-btn encrypt">Encrypt & Lock</button>
       </div>
     </div>
 
     <div id="tab-decrypt" class="tab-content">
-      <div class="message-card">
-        <label for="ct">Paste the secret message...</label>
-        <textarea id="ct" placeholder="Paste the encrypted code here to unlock the message."></textarea>
-        <button id="decryptBtn" class="action-btn decrypt">Decrypt & Reveal</button>
       </div>
-    </div>
     
     <p id="status" class="status"></p>
     <p class="dedication">Dedicated to the love of my life B. -Tink</p>
@@ -79,3 +61,4 @@
   <script src="app.js" defer></script>
 </body>
 </html>
+
