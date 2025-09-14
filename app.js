@@ -159,7 +159,7 @@ async function handleDecrypt() {
     }
     let bundle;
     try {
-      bundle = JSON.parse(raw);
+      bundle = JSON.parse(raw); // Corrected this line
     } catch {
       setStatus('Ciphertext is not valid JSON.', 'danger');
       return;
