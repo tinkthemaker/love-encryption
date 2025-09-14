@@ -5,6 +5,8 @@ const CACHE_NAME = 'love-messages-v1';
 const urlsToCache = [
   './', // This represents the root, which will serve index.html
   './index.html',
+  './style.css', // Added this line
+  './app.js',    // Added this line
   './heart-192.png',
   './heart-512.png'
 ];
