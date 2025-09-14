@@ -39,6 +39,13 @@ const b64 = {
 };
 const rand = n => crypto.getRandomValues(new Uint8Array(n));
 
+// --- Haptic Feedback Function ---
+function vibrate() {
+  if ('vibrate' in navigator) {
+    navigator.vibrate(50); // Vibrate for 50 milliseconds
+  }
+}
+
 // --- Core Crypto Functions ---
 async function deriveKey(pass, salt, iterations) {
   const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
@@ -67,6 +74,13 @@ function setStatus(msg, type = 'muted') {
   statusEl.textContent = msg;
   statusEl.className = 'status';
   if (type !== 'muted') statusEl.classList.add(type);
+  
+  // Add the visible class to trigger the animation
+  if (msg) {
+    statusEl.classList.add('visible');
+  } else {
+    statusEl.classList.remove('visible');
+  }
 }
 
 function showResult(title, content) {
@@ -127,6 +141,7 @@ function resetApp() {
 
 // --- Event Handlers ---
 async function handleEncrypt() {
+  vibrate();
   try {
     const pass = passEl.value.trim();
     if (!pass) {
@@ -148,6 +163,7 @@ async function handleEncrypt() {
 }
 
 async function handleDecrypt() {
+  vibrate();
   try {
     const pass = passEl.value.trim();
     if (!pass) {
@@ -182,6 +198,7 @@ function togglePasswordVisibility() {
 }
 
 async function copyResultToClipboard(e) {
+    vibrate();
     const contentToCopy = resultContentEl.value;
     if (!contentToCopy) return;
     try {
@@ -226,15 +243,10 @@ ptEl.addEventListener('blur', () => {
   }
 });
 
-ctEl.addEventListener('focus', () => {
-  if (ctEl.placeholder === ctEl.value) {
-      ctEl.value = '';
+// Set initial placeholder color
+document.addEventListener('DOMContentLoaded', () => {
+  if (ptEl.value === instructionText) {
+    ptEl.style.color = 'var(--muted)';
   }
 });
 
-// Set initial placeholder color
-document.addEventListener('DOMContentLoaded', () => {
-    if (ptEl.value === instructionText) {
-        ptEl.style.color = 'var(--muted)';
-    }
-});
