@@ -102,7 +102,7 @@ function updatePasswordStrength() {
   if (/[a-z]/.test(pass)) score++;
   if (/[0-9]/.test(pass)) score++;
   if (/[^A-Za-z0-9]/.test(pass)) score++;
-
+  
   const scorePercent = (score / 6) * 100;
   strengthBar.className = '';
   if (scorePercent > 75) {
@@ -159,7 +159,7 @@ async function handleDecrypt() {
     }
     let bundle;
     try {
-      bundle = JSON..parse(raw);
+      bundle = JSON.parse(raw);
     } catch {
       setStatus('Ciphertext is not valid JSON.', 'danger');
       return;
@@ -204,16 +204,4 @@ passEl.addEventListener('input', updatePasswordStrength);
 resultCopyBtn.addEventListener('click', copyResultToClipboard);
 resultDoneBtn.addEventListener('click', hideResult);
 resultOverlay.addEventListener('click', (e) => {
-  if (e.target === resultOverlay) hideResult();
-});
-navEncrypt.addEventListener('click', () => switchTab('encrypt'));
-navDecrypt.addEventListener('click', () => switchTab('decrypt'));
-
-// Clear message box on click
-ptEl.addEventListener('focus', () => {
-  ptEl.value = '';
-});
-
-ctEl.addEventListener('focus', () => {
-  ctEl.value = '';
-});
+  if (e.target === resultOverlay) hide
