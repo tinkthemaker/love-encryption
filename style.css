@@ -1,3 +1,4 @@
+/* --- Global Variables and Resets --- */
 :root {
     --bg: #101118; 
     --panel: #1b1d29; 
@@ -28,7 +29,7 @@ body {
     background-color: var(--bg);
     color: var(--text); 
     font: 16px/1.5 system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif;
-    overflow-x: hidden; /* Prevents aurora from creating scrollbars */
+    overflow-x: hidden;
 }
 main { 
     max-width: 500px; 
@@ -38,7 +39,7 @@ main {
     z-index: 2; 
 }
 
-/* --- Aurora Background --- */
+/* --- Animated Aurora Background --- */
 .aurora { 
     position: fixed; 
     top: 0; 
@@ -79,6 +80,7 @@ main {
     to { transform: translate(-80px, -40px) rotate(-60deg); } 
 }
 
+/* --- Header --- */
 header { 
     display: flex; 
     align-items: center; 
@@ -109,14 +111,17 @@ h1 {
     margin: 0; 
 }
 
-/* --- Settings & Result Card Styling --- */
-.settings, .result-card { 
+/* --- Cards and Panels (Glassmorphism) --- */
+.settings, .result-card, .message-card { 
     background: color-mix(in srgb, var(--panel) 50%, transparent);
     backdrop-filter: blur(10px);
     border: 1px solid var(--border); 
     border-radius: var(--radius); 
-    margin-bottom: 24px; 
     box-shadow: var(--shadow); 
+    transition: box-shadow .3s ease, border-color .3s ease, background .3s ease;
+}
+.settings {
+    margin-bottom: 24px;
 }
 .settings summary { 
     display: flex; 
@@ -128,7 +133,7 @@ h1 {
     outline: none;
     color: var(--muted);
 }
-.settings summary:hover, .settings summary:focus {
+.settings summary:hover, .settings[open] summary {
     color: var(--text);
 }
 .settings summary svg {
@@ -151,7 +156,20 @@ h1 {
 .settings[open] summary { 
     border-bottom: 1px solid var(--border); 
 }
+.message-card {
+    padding: 16px;
+}
+.message-card:focus-within { 
+    border-color: var(--acc); 
+    box-shadow: 0 0 20px color-mix(in srgb, var(--acc) 20%, transparent);
+    background: color-mix(in srgb, var(--panel) 70%, transparent);
+}
+#tab-decrypt .message-card:focus-within { 
+    border-color: var(--ok); 
+    box-shadow: 0 0 20px color-mix(in srgb, var(--ok) 20%, transparent); 
+}
 
+/* --- Forms and Inputs --- */
 .form-group { 
     margin-bottom: 16px; 
     position: relative; 
@@ -215,6 +233,20 @@ input:focus {
 #strength-bar.strong { 
     background-color: var(--ok); 
 }
+textarea { 
+    width: 100%; 
+    min-height: 200px; 
+    resize: vertical; 
+    background: transparent; 
+    color: var(--text); 
+    border: none; 
+    padding: 0; 
+    font-size: 17px; 
+    outline: none; 
+    line-height: 1.6; 
+}
+
+/* --- Buttons and Tabs --- */
 .tabs-nav { 
     display: flex; 
     gap: 8px; 
@@ -247,39 +279,6 @@ input:focus {
 }
 .tab-content.active { 
     display: block; 
-}
-
-/* --- Glassmorphism Effect --- */
-.message-card { 
-    background: color-mix(in srgb, var(--panel) 50%, transparent);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border); 
-    border-radius: var(--radius); 
-    padding: 16px; 
-    transition: box-shadow .3s ease, border-color .3s ease, background .3s ease;
-    box-shadow: var(--shadow);
-}
-.message-card:focus-within { 
-    border-color: var(--acc); 
-    box-shadow: 0 0 20px color-mix(in srgb, var(--acc) 20%, transparent);
-    background: color-mix(in srgb, var(--panel) 70%, transparent);
-}
-#tab-decrypt .message-card:focus-within { 
-    border-color: var(--ok); 
-    box-shadow: 0 0 20px color-mix(in srgb, var(--ok) 20%, transparent); 
-}
-
-textarea { 
-    width: 100%; 
-    min-height: 200px; 
-    resize: vertical; 
-    background: transparent; 
-    color: var(--text); 
-    border: none; 
-    padding: 0; 
-    font-size: 17px; 
-    outline: none; 
-    line-height: 1.6; 
 }
 .action-btn { 
     width: 100%; 
@@ -327,7 +326,7 @@ textarea {
     border-color: var(--muted); 
 }
 
-/* --- Modal Animation --- */
+/* --- Result Modal --- */
 .result-overlay { 
     position: fixed; 
     inset: 0; 
@@ -351,13 +350,11 @@ textarea {
     transform: translateY(20px) scale(0.98); 
     opacity: 0; 
     transition: transform .3s ease, opacity .3s ease; 
-    margin-bottom: 0; /* Override margin from .settings */
 }
 .result-overlay.active .result-card { 
     transform: translateY(0) scale(1); 
     opacity: 1; 
 }
-
 .result-card h2 { 
     margin: 0 0 12px; 
     font-size: 20px; 
@@ -385,7 +382,7 @@ textarea {
     border-color: transparent; 
 }
 
-/* --- Animated Status --- */
+/* --- Status and Dedication Text --- */
 .status { 
     text-align: center; 
     color: var(--muted); 
