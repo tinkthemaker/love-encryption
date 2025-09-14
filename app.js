@@ -28,6 +28,7 @@ const settingsDetails = $('.settings');
 
 // Constants
 const KDF_ITERATIONS = 310000;
+const instructionText = "Set a passphrase in Settings, type your message, then encrypt.";
 
 // Utility functions
 const enc = new TextEncoder();
@@ -114,7 +115,8 @@ function updatePasswordStrength() {
 }
 
 function resetApp() {
-  ptEl.value = '';
+  ptEl.value = instructionText;
+  ptEl.style.color = 'var(--muted)';
   ctEl.value = '';
   passEl.value = '';
   updatePasswordStrength();
@@ -132,7 +134,7 @@ async function handleEncrypt() {
       return;
     }
     const plaintext = ptEl.value.trim();
-    if (!plaintext) {
+    if (!plaintext || plaintext === instructionText) {
       setStatus('Please write a message to encrypt.', 'danger');
       return;
     }
@@ -209,11 +211,30 @@ resultOverlay.addEventListener('click', (e) => {
 navEncrypt.addEventListener('click', () => switchTab('encrypt'));
 navDecrypt.addEventListener('click', () => switchTab('decrypt'));
 
-// Clear message box on click
+// --- Placeholder Logic ---
 ptEl.addEventListener('focus', () => {
-  ptEl.value = '';
+  if (ptEl.value === instructionText) {
+    ptEl.value = '';
+    ptEl.style.color = 'var(--text)';
+  }
+});
+
+ptEl.addEventListener('blur', () => {
+  if (ptEl.value.trim() === '') {
+    ptEl.value = instructionText;
+    ptEl.style.color = 'var(--muted)';
+  }
 });
 
 ctEl.addEventListener('focus', () => {
-  ctEl.value = '';
+  if (ctEl.placeholder === ctEl.value) {
+      ctEl.value = '';
+  }
+});
+
+// Set initial placeholder color
+document.addEventListener('DOMContentLoaded', () => {
+    if (ptEl.value === instructionText) {
+        ptEl.style.color = 'var(--muted)';
+    }
 });
