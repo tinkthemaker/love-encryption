@@ -44,6 +44,35 @@
     }
   }
 
+  // --- NEW: Ciphertext Formatting Functions ---
+
+  /**
+   * Formats an encrypted bundle into an armored text block.
+   * @param {object} bundle The encrypted data object.
+   * @returns {string} The formatted ciphertext string.
+   */
+  function formatCiphertext(bundle) {
+    const jsonString = JSON.stringify(bundle);
+    const base64String = btoa(jsonString);
+    const lines = base64String.match(/.{1,64}/g) || [];
+    return `-----BEGIN SECRET MESSAGE-----\n${lines.join('\n')}\n-----END SECRET MESSAGE-----`;
+  }
+
+  /**
+   * Parses an armored text block back into an object.
+   * @param {string} armoredText The formatted ciphertext.
+   * @returns {object} The parsed encrypted data object.
+   */
+  function parseCiphertext(armoredText) {
+    const base64String = armoredText
+      .replace('-----BEGIN SECRET MESSAGE-----', '')
+      .replace('-----END SECRET MESSAGE-----', '')
+      .replace(/\s/g, '');
+    const jsonString = atob(base64String);
+    return JSON.parse(jsonString);
+  }
+
+
   // --- Core Crypto Functions ---
 
   /**
@@ -190,7 +219,8 @@
       }
       setStatus('Locking your secret...');
       const bundle = await encryptMessage(pass, plaintext);
-      showResult('Secret Message Ready', JSON.stringify(bundle, null, 2));
+      const formattedCiphertext = formatCiphertext(bundle);
+      showResult('Secret Message Ready', formattedCiphertext);
       setStatus('Your message is now encrypted.');
     } catch (err) {
       setStatus(`Encryption failed: ${err.message}`, 'danger');
@@ -213,9 +243,9 @@
       }
       let bundle;
       try {
-        bundle = JSON.parse(raw);
+        bundle = parseCiphertext(raw);
       } catch {
-        return setStatus('Ciphertext is not valid JSON.', 'danger');
+        return setStatus('Ciphertext is not valid or is corrupted.', 'danger');
       }
       setStatus('Unlocking your secret...');
       const msg = await decryptMessage(pass, bundle);
@@ -317,4 +347,4 @@
   document.addEventListener('DOMContentLoaded', init);
 
 })();
-
+```eof
