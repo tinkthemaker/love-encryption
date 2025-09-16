@@ -44,7 +44,7 @@
     }
   }
 
-  // --- NEW: Ciphertext Formatting Functions ---
+  // --- Ciphertext Formatting Functions ---
 
   /**
    * Formats an encrypted bundle into an armored text block.
@@ -71,7 +71,6 @@
     const jsonString = atob(base64String);
     return JSON.parse(jsonString);
   }
-
 
   // --- Core Crypto Functions ---
 
@@ -347,4 +346,4 @@
   document.addEventListener('DOMContentLoaded', init);
 
 })();
-```eof
+
