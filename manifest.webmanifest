@@ -1,11 +1,11 @@
 {
-  "name": "Love Messages ♥",
-  "short_name": "LoveNotes",
-  "description": "A private, secure way to encrypt and decrypt messages for your loved ones.",
+  "name": "CIPHER",
+  "short_name": "Cipher",
+  "description": "Secure client-side message encryption using AES-256-GCM.",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#101118",
-  "theme_color": "#101118",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "heart-192.png",
