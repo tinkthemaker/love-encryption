@@ -246,9 +246,14 @@
     ptEl.value = '';
     ctEl.value = '';
     passEl.value = '';
+    // Reset touched state so textareas clear on next focus
+    delete ptEl.dataset.touched;
+    delete ctEl.dataset.touched;
+    ptEl.classList.remove('focused');
+    ctEl.classList.remove('focused');
     updatePasswordStrength();
     switchTab('encrypt');
-    setStatus('SYSTEM RESET');
+    setStatus('System reset');
     settingsDetails.removeAttribute('open');
   }
 
@@ -370,21 +375,35 @@
     navEncrypt.addEventListener('click', () => switchTab('encrypt'));
     navDecrypt.addEventListener('click', () => switchTab('decrypt'));
 
-    // Clear placeholder text on first focus
+    // Textarea interaction - clear on first click, reset on empty blur
     ptEl.addEventListener('focus', handleTextareaFocus);
     ctEl.addEventListener('focus', handleTextareaFocus);
+    ptEl.addEventListener('blur', handleTextareaBlur);
+    ctEl.addEventListener('blur', handleTextareaBlur);
   }
 
   /**
-   * Clears textarea placeholder styling on focus.
+   * Clears textarea content on first focus for easy typing.
    * @param {Event} e The focus event.
    */
   function handleTextareaFocus(e) {
     const textarea = e.target;
+    // Clear placeholder/existing text on first click for fresh input
+    if (!textarea.dataset.touched) {
+      textarea.value = '';
+      textarea.dataset.touched = 'true';
+    }
     textarea.classList.add('focused');
-    // Select all text for easy replacement
-    if (textarea.value) {
-      textarea.select();
+  }
+
+  /**
+   * Resets textarea touched state when empty on blur.
+   * @param {Event} e The blur event.
+   */
+  function handleTextareaBlur(e) {
+    const textarea = e.target;
+    if (!textarea.value.trim()) {
+      delete textarea.dataset.touched;
     }
   }
 

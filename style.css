@@ -800,19 +800,217 @@ h1:hover {
     background: var(--gray-400);
 }
 
-/* Mobile Touch Improvements */
+/* ============================================
+   RESPONSIVE - Tablet
+   ============================================ */
+
+@media (max-width: 768px) {
+    main {
+        max-width: 100%;
+        padding: 0 20px;
+    }
+
+    .result-card {
+        max-width: 100%;
+    }
+}
+
+/* ============================================
+   RESPONSIVE - Mobile
+   ============================================ */
+
 @media (max-width: 600px) {
+    body {
+        font-size: 15px;
+    }
+
     main {
         padding: 0 16px;
     }
 
-    .action-btn,
-    .btn,
+    header {
+        padding: 20px 0;
+        margin-bottom: 20px;
+    }
+
+    h1 {
+        font-size: 16px;
+        letter-spacing: 2px;
+    }
+
+    .logo-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .settings summary {
+        padding: 12px 16px;
+    }
+
+    .settings[open] .settings-content {
+        padding: 0 16px 16px;
+    }
+
+    .tabs-nav {
+        margin-bottom: 12px;
+    }
+
     .tab-btn {
+        padding: 14px 12px;
+        font-size: 12px;
+        letter-spacing: 1px;
+    }
+
+    .message-card {
         padding: 16px;
     }
 
     textarea {
+        min-height: 150px;
+        font-size: 16px; /* Prevents iOS zoom on focus */
+    }
+
+    input {
+        font-size: 16px; /* Prevents iOS zoom on focus */
+        padding: 14px;
+    }
+
+    .action-btn {
+        padding: 16px;
+        font-size: 12px;
+        letter-spacing: 2px;
+    }
+
+    .btn {
+        padding: 14px 16px;
+        font-size: 12px;
+    }
+
+    .result-overlay {
+        padding: 16px;
+    }
+
+    .result-card {
+        padding: 20px;
+    }
+
+    .result-card textarea {
         min-height: 140px;
+        font-size: 12px;
+    }
+
+    .footer {
+        margin-top: 24px;
+    }
+
+    .dedication {
+        font-size: 11px;
+    }
+
+    .tech-info {
+        font-size: 9px;
+    }
+}
+
+/* ============================================
+   RESPONSIVE - Small Mobile
+   ============================================ */
+
+@media (max-width: 380px) {
+    main {
+        padding: 0 12px;
+    }
+
+    h1 {
+        font-size: 14px;
+    }
+
+    .version {
+        font-size: 10px;
+    }
+
+    .tab-btn {
+        padding: 12px 8px;
+        font-size: 11px;
+    }
+
+    .action-btn {
+        padding: 14px;
+    }
+}
+
+/* ============================================
+   TOUCH DEVICE OPTIMIZATIONS
+   ============================================ */
+
+@media (hover: none) and (pointer: coarse) {
+    /* Larger touch targets */
+    .pass-toggle {
+        width: 48px;
+        height: 48px;
+    }
+
+    .tab-btn,
+    .action-btn,
+    .btn {
+        min-height: 48px;
+    }
+
+    /* Remove hover effects on touch devices */
+    .action-btn:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    .action-btn:active {
+        background: var(--white);
+        color: var(--black);
+    }
+
+    .tab-btn:hover {
+        background: var(--panel);
+    }
+
+    .tab-btn:active {
+        background: var(--gray-600);
+    }
+}
+
+/* ============================================
+   LANDSCAPE MOBILE
+   ============================================ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+    header {
+        padding: 12px 0;
+        margin-bottom: 12px;
+    }
+
+    .settings {
+        margin-bottom: 12px;
+    }
+
+    textarea {
+        min-height: 100px;
+    }
+
+    .footer {
+        margin-top: 16px;
+    }
+}
+
+/* ============================================
+   HIGH CONTRAST / ACCESSIBILITY
+   ============================================ */
+
+@media (prefers-contrast: high) {
+    :root {
+        --gray-300: #a0a0a0;
+        --gray-400: #606060;
+        --gray-500: #303030;
+    }
+
+    .message-card:focus-within {
+        box-shadow: 0 0 0 2px var(--white);
     }
 }
