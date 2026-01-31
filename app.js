@@ -313,7 +313,7 @@
   function togglePasswordVisibility() {
     const isPassword = passEl.type === 'password';
     passEl.type = isPassword ? 'text' : 'password';
-    togglePassBtn.textContent = isPassword ? 'Hide' : 'Show';
+    togglePassBtn.classList.toggle('showing', isPassword);
     togglePassBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
   }
 
@@ -369,6 +369,23 @@
     // Tab navigation
     navEncrypt.addEventListener('click', () => switchTab('encrypt'));
     navDecrypt.addEventListener('click', () => switchTab('decrypt'));
+
+    // Clear placeholder text on first focus
+    ptEl.addEventListener('focus', handleTextareaFocus);
+    ctEl.addEventListener('focus', handleTextareaFocus);
+  }
+
+  /**
+   * Clears textarea placeholder styling on focus.
+   * @param {Event} e The focus event.
+   */
+  function handleTextareaFocus(e) {
+    const textarea = e.target;
+    textarea.classList.add('focused');
+    // Select all text for easy replacement
+    if (textarea.value) {
+      textarea.select();
+    }
   }
 
   // --- App Initialization ---
