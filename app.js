@@ -5,7 +5,6 @@
   const $ = sel => document.querySelector(sel);
   const passEl = $('#pass');
   const ptEl = $('#pt'), ctEl = $('#ct');
-  const strengthBar = $('#strength-bar');
   const resultOverlay = $('#resultOverlay');
   const resultTitleEl = $('#resultTitle');
   const resultContentEl = $('#resultContent');
@@ -27,7 +26,7 @@
   const KDF_ITERATIONS = 310000;
   const MIN_KDF_ITERATIONS = 100000;
   const DEBOUNCE_DELAY = 150;
-  const instructionText = "Set a passphrase in Settings, type your message, then encrypt.";
+  const strengthEl = $('#strength');
 
   // --- Utility Functions ---
   const enc = new TextEncoder();
@@ -227,28 +226,29 @@
     if (/[a-z]/.test(pass)) score++;
     if (/[0-9]/.test(pass)) score++;
     if (/[^A-Za-z0-9]/.test(pass)) score++;
-    
-    const scorePercent = (score / 6) * 100;
-    strengthBar.className = '';
-    if (scorePercent > 75) {
-      strengthBar.classList.add('strong');
-    } else if (scorePercent > 40) {
-      strengthBar.classList.add('medium');
+
+    strengthEl.className = '';
+    if (!pass) {
+      // No password entered
+    } else if (score >= 5) {
+      strengthEl.classList.add('strong');
+    } else if (score >= 3) {
+      strengthEl.classList.add('medium');
+    } else {
+      strengthEl.classList.add('weak');
     }
-    strengthBar.style.width = `${scorePercent}%`;
   }
 
   /**
    * Resets the application to its initial state.
    */
   function resetApp() {
-    ptEl.value = instructionText;
-    ptEl.style.color = 'var(--muted)';
+    ptEl.value = '';
     ctEl.value = '';
     passEl.value = '';
     updatePasswordStrength();
     switchTab('encrypt');
-    setStatus('App has been reset.');
+    setStatus('SYSTEM RESET');
     settingsDetails.removeAttribute('open');
   }
 
@@ -262,19 +262,19 @@
     try {
       const pass = passEl.value.trim();
       if (!pass) {
-        return setStatus('Please set a passphrase in Settings.', 'danger');
+        return setStatus('ERROR: No passphrase set', 'danger');
       }
       const plaintext = ptEl.value.trim();
-      if (!plaintext || plaintext === instructionText) {
-        return setStatus('Please write a message to encrypt.', 'danger');
+      if (!plaintext) {
+        return setStatus('ERROR: No message to encrypt', 'danger');
       }
-      setStatus('Locking your secret...');
+      setStatus('ENCRYPTING...');
       const bundle = await encryptMessage(pass, plaintext);
       const formattedCiphertext = formatCiphertext(bundle);
-      showResult('Secret Message Ready', formattedCiphertext);
-      setStatus('Your message is now encrypted.');
+      showResult('OUTPUT // ENCRYPTED', formattedCiphertext);
+      setStatus('ENCRYPTION COMPLETE');
     } catch (err) {
-      setStatus(`Encryption failed: ${err.message}`, 'danger');
+      setStatus(`ERROR: ${err.message}`, 'danger');
     }
   }
 
@@ -286,24 +286,24 @@
     try {
       const pass = passEl.value.trim();
       if (!pass) {
-        return setStatus('Please set a passphrase in Settings.', 'danger');
+        return setStatus('ERROR: No passphrase set', 'danger');
       }
       const raw = ctEl.value.trim();
       if (!raw) {
-        return setStatus('Please paste a message to decrypt.', 'danger');
+        return setStatus('ERROR: No ciphertext provided', 'danger');
       }
       let bundle;
       try {
         bundle = parseCiphertext(raw);
       } catch {
-        return setStatus('Ciphertext is not valid or is corrupted.', 'danger');
+        return setStatus('ERROR: Invalid or corrupted ciphertext', 'danger');
       }
-      setStatus('Unlocking your secret...');
+      setStatus('DECRYPTING...');
       const msg = await decryptMessage(pass, bundle);
-      showResult('Message Revealed!', msg);
-      setStatus('Decryption successful!');
+      showResult('OUTPUT // DECRYPTED', msg);
+      setStatus('DECRYPTION COMPLETE');
     } catch (err) {
-      setStatus('Decryption failed. Wrong passphrase or corrupted data.', 'danger');
+      setStatus('ERROR: Decryption failed - invalid passphrase', 'danger');
     }
   }
 
@@ -313,7 +313,7 @@
   function togglePasswordVisibility() {
     const isPassword = passEl.type === 'password';
     passEl.type = isPassword ? 'text' : 'password';
-    togglePassBtn.textContent = isPassword ? '🙈' : '👁️';
+    togglePassBtn.textContent = isPassword ? '[-]' : '[*]';
     togglePassBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
   }
 
@@ -329,13 +329,13 @@
       await navigator.clipboard.writeText(contentToCopy);
       const btn = e.currentTarget;
       const originalText = btn.textContent;
-      btn.textContent = 'Copied!';
+      btn.textContent = '[ OK ]';
       setTimeout(() => {
         btn.textContent = originalText;
       }, 1500);
     } catch (err) {
       console.error('Failed to copy: ', err);
-      setStatus('Failed to copy to clipboard.', 'danger');
+      setStatus('ERROR: Clipboard access denied', 'danger');
     }
   }
 
@@ -369,28 +369,6 @@
     // Tab navigation
     navEncrypt.addEventListener('click', () => switchTab('encrypt'));
     navDecrypt.addEventListener('click', () => switchTab('decrypt'));
-
-    // --- Placeholder Logic ---
-    ptEl.addEventListener('focus', () => {
-      if (ptEl.value === instructionText) {
-        ptEl.value = '';
-        ptEl.style.color = 'var(--text)';
-      }
-    });
-
-    ptEl.addEventListener('blur', () => {
-      if (ptEl.value.trim() === '') {
-        ptEl.value = instructionText;
-        ptEl.style.color = 'var(--muted)';
-      }
-    });
-    
-    // Note: We don't clear ctEl on focus to preserve user-pasted content
-
-    // Set initial placeholder color
-    if (ptEl.value === instructionText) {
-      ptEl.style.color = 'var(--muted)';
-    }
   }
 
   // --- App Initialization ---
