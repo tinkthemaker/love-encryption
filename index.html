@@ -18,13 +18,15 @@
 </head>
 <body>
   <!-- Background Effects -->
-  <div class="grid-bg"></div>
-  <div class="scanlines"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-scanlines"></div>
+  <div class="bg-noise"></div>
 
   <main>
     <header>
       <div class="logo-icon">
-        <!-- Pixel Art Lock Icon (8x8 grid style) -->
         <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="3" y="7" width="10" height="8" fill="white"/>
           <rect x="5" y="3" width="6" height="5" fill="none" stroke="white" stroke-width="2"/>
@@ -41,10 +43,10 @@
         <div class="form-group">
           <label for="pass">Passphrase</label>
           <input id="pass" type="password" placeholder="enter shared secret key" autocomplete="new-password">
-          <button id="togglePassBtn" type="button" aria-label="Toggle password visibility" aria-pressed="false">[*]</button>
+          <button id="togglePassBtn" type="button" aria-label="Toggle password visibility" aria-pressed="false">Show</button>
           <div id="strength" role="meter" aria-label="Password strength"><div id="strength-bar"></div></div>
         </div>
-        <button id="clearAllBtn" class="btn" type="button" style="width:100%">[X] Clear All</button>
+        <button id="clearAllBtn" class="btn" type="button" style="width:100%">Clear All</button>
       </div>
     </details>
 
@@ -57,7 +59,7 @@
       <div class="message-card">
         <label for="pt">Input Message</label>
         <textarea id="pt" placeholder="Enter plaintext message..." aria-describedby="status"></textarea>
-        <button id="encryptBtn" class="action-btn encrypt">[ Encrypt ]</button>
+        <button id="encryptBtn" class="action-btn encrypt">Encrypt</button>
       </div>
     </div>
 
@@ -65,12 +67,12 @@
       <div class="message-card">
         <label for="ct">Encrypted Data</label>
         <textarea id="ct" placeholder="Paste ciphertext here..." aria-describedby="status"></textarea>
-        <button id="decryptBtn" class="action-btn decrypt">[ Decrypt ]</button>
+        <button id="decryptBtn" class="action-btn decrypt">Decrypt</button>
       </div>
     </div>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
-    <p class="dedication">// Dedicated to B. -Tink</p>
+    <p class="dedication">Dedicated to B.</p>
   </main>
 
   <div id="resultOverlay" class="result-overlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
@@ -78,8 +80,8 @@
       <h2 id="resultTitle"></h2>
       <textarea id="resultContent" readonly aria-label="Result content"></textarea>
       <div class="result-footer">
-        <button id="resultCopyBtn" class="btn primary" type="button">[ Copy ]</button>
-        <button id="resultDoneBtn" class="btn" type="button">[ Close ]</button>
+        <button id="resultCopyBtn" class="btn primary" type="button">Copy</button>
+        <button id="resultDoneBtn" class="btn" type="button">Close</button>
       </div>
     </div>
   </div>

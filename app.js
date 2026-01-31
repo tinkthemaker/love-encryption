@@ -313,7 +313,7 @@
   function togglePasswordVisibility() {
     const isPassword = passEl.type === 'password';
     passEl.type = isPassword ? 'text' : 'password';
-    togglePassBtn.textContent = isPassword ? '[-]' : '[*]';
+    togglePassBtn.textContent = isPassword ? 'Hide' : 'Show';
     togglePassBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
   }
 
@@ -329,7 +329,7 @@
       await navigator.clipboard.writeText(contentToCopy);
       const btn = e.currentTarget;
       const originalText = btn.textContent;
-      btn.textContent = '[ OK ]';
+      btn.textContent = 'Copied';
       setTimeout(() => {
         btn.textContent = originalText;
       }, 1500);

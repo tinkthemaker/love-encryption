@@ -1,6 +1,6 @@
 /* ============================================
    CIPHER // Secure Message Encryption
-   Watch Dogs / Hacker Aesthetic Theme
+   Hacker Aesthetic Theme
    ============================================ */
 
 /* --- Global Variables --- */
@@ -23,8 +23,6 @@
     --muted: var(--gray-300);
     --border: var(--gray-400);
     --accent: var(--white);
-    --success: var(--gray-200);
-    --danger: var(--gray-200);
 
     /* Sizing */
     --radius: 2px;
@@ -39,8 +37,8 @@
     /* Typography */
     font-synthesis-weight: none;
     text-rendering: geometricPrecision;
-    -webkit-font-smoothing: none;
-    -moz-osx-font-smoothing: unset;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -56,6 +54,8 @@ body {
     color: var(--text);
     font: 14px/1.6 'Courier New', Courier, monospace;
     overflow-x: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 main {
@@ -66,40 +66,138 @@ main {
     z-index: 2;
 }
 
-/* --- Scanline Overlay (CRT Effect) --- */
-.scanlines {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 1;
-    pointer-events: none;
-    background: repeating-linear-gradient(
-        0deg,
-        rgba(255, 255, 255, 0.02) 0px,
-        rgba(255, 255, 255, 0.02) 1px,
-        transparent 1px,
-        transparent 2px
-    );
-}
+/* ============================================
+   BACKGROUND SYSTEM
+   Responsive layered effects for all devices
+   ============================================ */
 
-/* --- Grid Pattern Background --- */
-.grid-bg {
+/* Layer 1: Perspective Grid */
+.bg-grid {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     z-index: 0;
     pointer-events: none;
     background-image:
         linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 20px 20px;
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
 }
 
-/* --- Header --- */
+/* Layer 2: Animated Glow Orbs */
+.bg-glow {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+    will-change: transform;
+}
+
+.bg-glow-1 {
+    width: min(400px, 80vw);
+    height: min(400px, 80vw);
+    background: var(--white);
+    top: -10%;
+    left: -10%;
+    animation: glow-drift-1 20s ease-in-out infinite;
+}
+
+.bg-glow-2 {
+    width: min(300px, 60vw);
+    height: min(300px, 60vw);
+    background: var(--white);
+    bottom: -5%;
+    right: -10%;
+    animation: glow-drift-2 25s ease-in-out infinite;
+}
+
+@keyframes glow-drift-1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(10vw, 5vh) scale(1.1); }
+    50% { transform: translate(5vw, 15vh) scale(0.9); }
+    75% { transform: translate(-5vw, 10vh) scale(1.05); }
+}
+
+@keyframes glow-drift-2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(-8vw, -10vh) scale(1.15); }
+    66% { transform: translate(-15vw, -5vh) scale(0.95); }
+}
+
+/* Layer 3: Scanlines */
+.bg-scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 1px,
+        rgba(0, 0, 0, 0.1) 1px,
+        rgba(0, 0, 0, 0.1) 2px
+    );
+}
+
+/* Layer 4: Noise Texture */
+.bg-noise {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.02;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Mobile optimizations */
+@media (max-width: 600px) {
+    .bg-grid {
+        background-size: 30px 30px;
+    }
+
+    .bg-glow {
+        filter: blur(60px);
+        opacity: 0.1;
+    }
+
+    .bg-glow-1 {
+        width: 250px;
+        height: 250px;
+        top: -50px;
+        left: -50px;
+    }
+
+    .bg-glow-2 {
+        width: 200px;
+        height: 200px;
+        bottom: -30px;
+        right: -30px;
+    }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .bg-glow {
+        animation: none;
+    }
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
 header {
     display: flex;
     align-items: center;
@@ -137,7 +235,10 @@ h1 {
     letter-spacing: 1px;
 }
 
-/* --- Cards and Panels --- */
+/* ============================================
+   CARDS AND PANELS
+   ============================================ */
+
 .settings, .result-card, .message-card {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -160,23 +261,22 @@ h1 {
     text-transform: uppercase;
     letter-spacing: 2px;
     font-size: 12px;
+    list-style: none;
 }
 
 .settings summary::before {
-    content: '[+]';
+    content: '+';
     font-family: 'Courier New', monospace;
+    font-weight: 400;
+    width: 12px;
 }
 
 .settings[open] summary::before {
-    content: '[-]';
+    content: '-';
 }
 
 .settings summary:hover {
     color: var(--text);
-}
-
-.settings summary svg {
-    display: none;
 }
 
 .settings summary::-webkit-details-marker {
@@ -206,7 +306,10 @@ h1 {
     border-color: var(--text);
 }
 
-/* --- Forms and Inputs --- */
+/* ============================================
+   FORMS AND INPUTS
+   ============================================ */
+
 .form-group {
     margin-bottom: 16px;
     position: relative;
@@ -243,7 +346,7 @@ input:focus {
 }
 
 #pass {
-    padding-right: 50px;
+    padding-right: 60px;
 }
 
 #togglePassBtn {
@@ -251,13 +354,15 @@ input:focus {
     right: 1px;
     bottom: 37px;
     top: 27px;
-    width: 48px;
+    width: 56px;
     background: transparent;
     border: none;
     color: var(--muted);
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px;
     font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     padding: 0;
     display: grid;
     place-items: center;
@@ -268,7 +373,7 @@ input:focus {
     color: var(--text);
 }
 
-/* --- Password Strength --- */
+/* Password Strength */
 #strength {
     margin-top: 8px;
     font-size: 10px;
@@ -284,22 +389,22 @@ input:focus {
 }
 
 #strength::after {
-    content: attr(data-label);
+    content: '';
     color: var(--muted);
 }
 
 #strength.weak::after {
-    content: '[ WEAK ]';
+    content: 'Weak';
     color: var(--gray-300);
 }
 
 #strength.medium::after {
-    content: '[ MEDIUM ]';
+    content: 'Medium';
     color: var(--gray-200);
 }
 
 #strength.strong::after {
-    content: '[ STRONG ]';
+    content: 'Strong';
     color: var(--white);
 }
 
@@ -321,7 +426,10 @@ textarea::placeholder {
     color: var(--gray-400);
 }
 
-/* --- Buttons and Tabs --- */
+/* ============================================
+   BUTTONS AND TABS
+   ============================================ */
+
 .tabs-nav {
     display: flex;
     gap: 0;
@@ -420,13 +528,17 @@ textarea::placeholder {
     border-color: var(--text);
 }
 
-/* --- Result Modal --- */
+/* ============================================
+   RESULT MODAL
+   ============================================ */
+
 .result-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.9);
     display: grid;
     place-items: center;
+    padding: 16px;
     opacity: 0;
     visibility: hidden;
     transition: opacity var(--transition-normal), visibility var(--transition-normal);
@@ -439,7 +551,7 @@ textarea::placeholder {
 }
 
 .result-card {
-    width: calc(100% - 32px);
+    width: 100%;
     max-width: 500px;
     padding: 20px;
     transform: translateY(10px);
@@ -491,7 +603,10 @@ textarea::placeholder {
     border-color: var(--gray-200);
 }
 
-/* --- Status Messages --- */
+/* ============================================
+   STATUS AND FOOTER
+   ============================================ */
+
 .status {
     text-align: left;
     color: var(--muted);
@@ -506,20 +621,10 @@ textarea::placeholder {
     opacity: 1;
 }
 
-.status::before {
-    content: '> ';
-    color: var(--gray-400);
-}
-
 .status.danger {
     color: var(--white);
 }
 
-.status.danger::before {
-    content: '! ';
-}
-
-/* --- Dedication --- */
 .dedication {
     text-align: center;
     font-style: normal;
@@ -529,7 +634,10 @@ textarea::placeholder {
     letter-spacing: 1px;
 }
 
-/* --- Glitch Animation (subtle) --- */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
 @keyframes glitch {
     0%, 90%, 100% {
         transform: translate(0);
@@ -553,34 +661,20 @@ h1:hover {
     animation: glitch 0.5s ease-in-out;
 }
 
-/* --- Cursor Blink --- */
-@keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
-}
+/* ============================================
+   UTILITIES
+   ============================================ */
 
-.cursor {
-    display: inline-block;
-    width: 8px;
-    height: 14px;
-    background: var(--white);
-    margin-left: 2px;
-    animation: blink 1s step-end infinite;
-}
-
-/* --- Focus Visible --- */
 :focus-visible {
     outline: 1px solid var(--white);
     outline-offset: 2px;
 }
 
-/* --- Selection --- */
 ::selection {
     background: var(--white);
     color: var(--black);
 }
 
-/* --- Scrollbar --- */
 ::-webkit-scrollbar {
     width: 6px;
 }
