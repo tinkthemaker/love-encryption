@@ -23,10 +23,12 @@
   <div class="bg-glow bg-glow-2"></div>
   <div class="bg-scanlines"></div>
   <div class="bg-noise"></div>
+  <div class="bg-vignette"></div>
 
   <main>
     <header>
       <div class="logo-icon">
+        <!-- Pixel Art Lock Icon -->
         <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="3" y="7" width="10" height="8" fill="white"/>
           <rect x="5" y="3" width="6" height="5" fill="none" stroke="white" stroke-width="2"/>
@@ -43,7 +45,18 @@
         <div class="form-group">
           <label for="pass">Passphrase</label>
           <input id="pass" type="password" placeholder="enter shared secret key" autocomplete="new-password">
-          <button id="togglePassBtn" type="button" aria-label="Toggle password visibility" aria-pressed="false">Show</button>
+          <button id="togglePassBtn" type="button" class="pass-toggle" aria-label="Toggle password visibility" aria-pressed="false">
+            <!-- Eye Open Icon -->
+            <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <!-- Eye Closed Icon -->
+            <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
           <div id="strength" role="meter" aria-label="Password strength"><div id="strength-bar"></div></div>
         </div>
         <button id="clearAllBtn" class="btn" type="button" style="width:100%">Clear All</button>
@@ -58,7 +71,7 @@
     <div id="tab-encrypt" class="tab-content active" role="tabpanel" aria-labelledby="nav-encrypt">
       <div class="message-card">
         <label for="pt">Input Message</label>
-        <textarea id="pt" placeholder="Enter plaintext message..." aria-describedby="status"></textarea>
+        <textarea id="pt" placeholder="Type your secret message here..." aria-describedby="status"></textarea>
         <button id="encryptBtn" class="action-btn encrypt">Encrypt</button>
       </div>
     </div>
@@ -66,13 +79,18 @@
     <div id="tab-decrypt" class="tab-content" role="tabpanel" aria-labelledby="nav-decrypt">
       <div class="message-card">
         <label for="ct">Encrypted Data</label>
-        <textarea id="ct" placeholder="Paste ciphertext here..." aria-describedby="status"></textarea>
+        <textarea id="ct" placeholder="Paste encrypted message here..." aria-describedby="status"></textarea>
         <button id="decryptBtn" class="action-btn decrypt">Decrypt</button>
       </div>
     </div>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
-    <p class="dedication">Dedicated to B.</p>
+
+    <footer class="footer">
+      <div class="footer-line"></div>
+      <p class="dedication">Dedicated to B.</p>
+      <p class="tech-info">AES-256-GCM // PBKDF2-SHA256</p>
+    </footer>
   </main>
 
   <div id="resultOverlay" class="result-overlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle">

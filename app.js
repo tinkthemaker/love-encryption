@@ -246,9 +246,14 @@
     ptEl.value = '';
     ctEl.value = '';
     passEl.value = '';
+    // Reset touched state so textareas clear on next focus
+    delete ptEl.dataset.touched;
+    delete ctEl.dataset.touched;
+    ptEl.classList.remove('focused');
+    ctEl.classList.remove('focused');
     updatePasswordStrength();
     switchTab('encrypt');
-    setStatus('SYSTEM RESET');
+    setStatus('System reset');
     settingsDetails.removeAttribute('open');
   }
 
@@ -313,7 +318,7 @@
   function togglePasswordVisibility() {
     const isPassword = passEl.type === 'password';
     passEl.type = isPassword ? 'text' : 'password';
-    togglePassBtn.textContent = isPassword ? 'Hide' : 'Show';
+    togglePassBtn.classList.toggle('showing', isPassword);
     togglePassBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
   }
 
@@ -369,6 +374,37 @@
     // Tab navigation
     navEncrypt.addEventListener('click', () => switchTab('encrypt'));
     navDecrypt.addEventListener('click', () => switchTab('decrypt'));
+
+    // Textarea interaction - clear on first click, reset on empty blur
+    ptEl.addEventListener('focus', handleTextareaFocus);
+    ctEl.addEventListener('focus', handleTextareaFocus);
+    ptEl.addEventListener('blur', handleTextareaBlur);
+    ctEl.addEventListener('blur', handleTextareaBlur);
+  }
+
+  /**
+   * Clears textarea content on first focus for easy typing.
+   * @param {Event} e The focus event.
+   */
+  function handleTextareaFocus(e) {
+    const textarea = e.target;
+    // Clear placeholder/existing text on first click for fresh input
+    if (!textarea.dataset.touched) {
+      textarea.value = '';
+      textarea.dataset.touched = 'true';
+    }
+    textarea.classList.add('focused');
+  }
+
+  /**
+   * Resets textarea touched state when empty on blur.
+   * @param {Event} e The blur event.
+   */
+  function handleTextareaBlur(e) {
+    const textarea = e.target;
+    if (!textarea.value.trim()) {
+      delete textarea.dataset.touched;
+    }
   }
 
   // --- App Initialization ---
