@@ -23,17 +23,47 @@
   const settingsDetails = $('.settings');
 
   // --- Constants ---
+  const APP_VERSION = 2;
   const KDF_ITERATIONS = 310000;
+  const MIN_KDF_ITERATIONS = 100000;
+  const DEBOUNCE_DELAY = 150;
   const instructionText = "Set a passphrase in Settings, type your message, then encrypt.";
 
   // --- Utility Functions ---
   const enc = new TextEncoder();
   const dec = new TextDecoder();
+
+  /**
+   * Safe Base64 encoding/decoding that handles large buffers.
+   * Avoids stack overflow from spread operator on large arrays.
+   */
   const b64 = {
-    to: buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replaceAll('\n', ''),
+    to: buf => {
+      const bytes = new Uint8Array(buf);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    },
     from: str => Uint8Array.from(atob(str), c => c.charCodeAt(0)).buffer
   };
+
   const rand = n => crypto.getRandomValues(new Uint8Array(n));
+
+  /**
+   * Creates a debounced function that delays invocation.
+   * @param {Function} fn The function to debounce.
+   * @param {number} delay Delay in milliseconds.
+   * @returns {Function} The debounced function.
+   */
+  function debounce(fn, delay) {
+    let timeoutId;
+    return (...args) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => fn(...args), delay);
+    };
+  }
 
   /**
    * Triggers a short vibration on supported devices.
@@ -62,14 +92,28 @@
    * Parses an armored text block back into an object.
    * @param {string} armoredText The formatted ciphertext.
    * @returns {object} The parsed encrypted data object.
+   * @throws {Error} If the ciphertext format is invalid.
    */
   function parseCiphertext(armoredText) {
-    const base64String = armoredText
+    const trimmed = armoredText.trim();
+    if (!trimmed.includes('-----BEGIN SECRET MESSAGE-----') ||
+        !trimmed.includes('-----END SECRET MESSAGE-----')) {
+      throw new Error('Invalid message format');
+    }
+    const base64String = trimmed
       .replace('-----BEGIN SECRET MESSAGE-----', '')
       .replace('-----END SECRET MESSAGE-----', '')
       .replace(/\s/g, '');
+    if (!base64String) {
+      throw new Error('Empty message content');
+    }
     const jsonString = atob(base64String);
-    return JSON.parse(jsonString);
+    const bundle = JSON.parse(jsonString);
+    // Validate required fields
+    if (!bundle.iv || !bundle.salt || !bundle.ct) {
+      throw new Error('Missing required encryption data');
+    }
+    return bundle;
   }
 
   // --- Core Crypto Functions ---
@@ -97,7 +141,7 @@
     const iv = rand(12);
     const key = await deriveKey(pass, salt, KDF_ITERATIONS);
     const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
-    return { v: 1, alg: 'AES-GCM-256/PBKDF2-SHA256', iv: b64.to(iv), salt: b64.to(salt), iters: KDF_ITERATIONS, ct: b64.to(ct) };
+    return { v: APP_VERSION, alg: 'AES-GCM-256/PBKDF2-SHA256', iv: b64.to(iv), salt: b64.to(salt), iters: KDF_ITERATIONS, ct: b64.to(ct) };
   }
 
   /**
@@ -105,11 +149,16 @@
    * @param {string} pass The user's password.
    * @param {object} bundle The encrypted data bundle.
    * @returns {Promise<string>} The decrypted plaintext message.
+   * @throws {Error} If iterations count is below minimum threshold.
    */
   async function decryptMessage(pass, bundle) {
     const iv = b64.from(bundle.iv);
     const salt = b64.from(bundle.salt);
     const iterations = Number(bundle.iters || KDF_ITERATIONS);
+    // Prevent downgrade attacks by enforcing minimum iterations
+    if (iterations < MIN_KDF_ITERATIONS) {
+      throw new Error('Security parameters below acceptable threshold');
+    }
     const key = await deriveKey(pass, salt, iterations);
     const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, b64.from(bundle.ct));
     return dec.decode(ptBuf);
@@ -161,6 +210,9 @@
     tabEncrypt.classList.toggle('active', isEncrypt);
     navDecrypt.classList.toggle('active', !isEncrypt);
     tabDecrypt.classList.toggle('active', !isEncrypt);
+    // Update ARIA attributes
+    navEncrypt.setAttribute('aria-selected', isEncrypt ? 'true' : 'false');
+    navDecrypt.setAttribute('aria-selected', isEncrypt ? 'false' : 'true');
   }
 
   /**
@@ -262,6 +314,7 @@
     const isPassword = passEl.type === 'password';
     passEl.type = isPassword ? 'text' : 'password';
     togglePassBtn.textContent = isPassword ? '🙈' : '👁️';
+    togglePassBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
   }
 
   /**
@@ -304,7 +357,7 @@
     // Settings and utility buttons
     clearAllBtn.addEventListener('click', resetApp);
     togglePassBtn.addEventListener('click', togglePasswordVisibility);
-    passEl.addEventListener('input', updatePasswordStrength);
+    passEl.addEventListener('input', debounce(updatePasswordStrength, DEBOUNCE_DELAY));
     
     // Modal buttons and overlay
     resultCopyBtn.addEventListener('click', copyResultToClipboard);
@@ -332,9 +385,7 @@
       }
     });
     
-    ctEl.addEventListener('focus', () => {
-      ctEl.value = '';
-    });
+    // Note: We don't clear ctEl on focus to preserve user-pasted content
 
     // Set initial placeholder color
     if (ptEl.value === instructionText) {

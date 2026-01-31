@@ -4,7 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Given to Fly ♥</title>
-  
+  <meta name="description" content="A secure, privacy-focused app for encrypting personal messages using AES-256-GCM encryption." />
+
   <!-- PWA & Mobile Themeing -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#101118" />
@@ -38,45 +39,45 @@
         <div class="form-group">
           <label for="pass">Passphrase (Your Secret)</label>
           <input id="pass" type="password" placeholder="e.g., a secret only you two know" autocomplete="new-password">
-          <button id="togglePassBtn">👁️</button>
-          <div id="strength"><div id="strength-bar"></div></div>
+          <button id="togglePassBtn" type="button" aria-label="Toggle password visibility" aria-pressed="false">👁️</button>
+          <div id="strength" role="meter" aria-label="Password strength"><div id="strength-bar"></div></div>
         </div>
-        <button id="clearAllBtn" class="btn" style="width:100%">🗑️ Clear All</button>
+        <button id="clearAllBtn" class="btn" type="button" style="width:100%">🗑️ Clear All</button>
       </div>
     </details>
 
-    <nav class="tabs-nav">
-      <button id="nav-encrypt" class="tab-btn active">Encrypt</button>
-      <button id="nav-decrypt" class="tab-btn decrypt">Decrypt</button>
+    <nav class="tabs-nav" role="tablist" aria-label="Message actions">
+      <button id="nav-encrypt" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-encrypt">Encrypt</button>
+      <button id="nav-decrypt" class="tab-btn decrypt" role="tab" aria-selected="false" aria-controls="tab-decrypt">Decrypt</button>
     </nav>
 
-    <div id="tab-encrypt" class="tab-content active">
+    <div id="tab-encrypt" class="tab-content active" role="tabpanel" aria-labelledby="nav-encrypt">
       <div class="message-card">
         <label for="pt">Your secret message...</label>
-        <textarea id="pt">Set a passphrase in Settings, type your message, then encrypt.</textarea>
+        <textarea id="pt" aria-describedby="status">Set a passphrase in Settings, type your message, then encrypt.</textarea>
         <button id="encryptBtn" class="action-btn encrypt">Encrypt & Lock</button>
       </div>
     </div>
 
-    <div id="tab-decrypt" class="tab-content">
+    <div id="tab-decrypt" class="tab-content" role="tabpanel" aria-labelledby="nav-decrypt">
       <div class="message-card">
         <label for="ct">Paste the secret message...</label>
-        <textarea id="ct" placeholder="Paste the encrypted code here to unlock the message."></textarea>
+        <textarea id="ct" placeholder="Paste the encrypted code here to unlock the message." aria-describedby="status"></textarea>
         <button id="decryptBtn" class="action-btn decrypt">Decrypt & Reveal</button>
       </div>
     </div>
     
-    <p id="status" class="status"></p>
+    <p id="status" class="status" role="status" aria-live="polite"></p>
     <p class="dedication">Dedicated to the love of my life B. -Tink</p>
   </main>
   
-  <div id="resultOverlay" class="result-overlay">
+  <div id="resultOverlay" class="result-overlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <div class="result-card">
       <h2 id="resultTitle"></h2>
-      <textarea id="resultContent" readonly></textarea>
+      <textarea id="resultContent" readonly aria-label="Result content"></textarea>
       <div class="result-footer">
-        <button id="resultCopyBtn" class="btn primary">Copy</button>
-        <button id="resultDoneBtn" class="btn">Done</button>
+        <button id="resultCopyBtn" class="btn primary" type="button">Copy</button>
+        <button id="resultDoneBtn" class="btn" type="button">Done</button>
       </div>
     </div>
   </div>
