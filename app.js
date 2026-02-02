@@ -19,7 +19,6 @@
   const navDecrypt = $('#nav-decrypt');
   const tabEncrypt = $('#tab-encrypt');
   const tabDecrypt = $('#tab-decrypt');
-  const settingsDetails = $('.settings');
 
   // --- Constants ---
   const APP_VERSION = 2;
@@ -254,7 +253,6 @@
     updatePasswordStrength();
     switchTab('encrypt');
     setStatus('System reset');
-    settingsDetails.removeAttribute('open');
   }
 
   // --- Event Handlers ---
