@@ -1,63 +1,101 @@
-Given to Fly ♥
-A beautiful, private, and secure web app for encrypting personal messages.
+# CIPHER
 
-Inspired by the Pearl Jam song of the same name, "Given to Fly" is a tool for sending secret messages that are meant to be cherished. It uses strong, modern cryptography that runs entirely in your browser, ensuring that your private notes remain private. No data is ever sent to a server.
+**Secure, client-side message encryption in your browser.**
 
-It's designed to be installed on your phone as a Progressive Web App (PWA) for a seamless, native-app experience, and it even works offline.
+CIPHER is a privacy-focused progressive web app for encrypting and decrypting personal messages using AES-256-GCM. Everything runs locally on your device — no servers, no accounts, no data collection. Install it on your phone and use it offline.
 
-Features
+Inspired by Pearl Jam's *Given to Fly*.
 
-Completely Private: All encryption and decryption happens locally on your device. Nothing is ever uploaded.
+---
 
-Strong Encryption: Uses the industry-standard Web Crypto API with AES-256-GCM and PBKDF2 (310,000 iterations) for robust security.
+## Features
 
-Progressive Web App (PWA): Installable on your phone's home screen for easy access.
+- **Zero-trust privacy** — All cryptography runs in your browser via the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API). No data ever leaves your device.
+- **AES-256-GCM encryption** with PBKDF2-SHA256 key derivation (310,000 iterations).
+- **Unique per message** — Random salt and IV generated for every encryption, so identical messages produce different ciphertext.
+- **Downgrade protection** — Refuses to decrypt messages using fewer than 100,000 PBKDF2 iterations.
+- **Installable PWA** — Add to your home screen for a native app experience.
+- **Works offline** — Service worker caches everything; no internet needed after first load.
+- **Passphrase strength meter** — Visual feedback on passphrase quality.
+- **Zero dependencies** — No frameworks, no build tools, no npm. Pure HTML, CSS, and JavaScript.
 
-Works Offline: Once installed, the app works perfectly without an internet connection.
+## How It Works
 
-Beautiful & Simple UI: A clean, mobile-first interface with a tab-based design, animated background, and interactive effects.
+CIPHER uses a **shared secret** model. You and your recipient agree on a passphrase ahead of time, then use it to encrypt and decrypt messages.
 
-Usability Features: Includes a passphrase strength meter and a show/hide toggle to prevent typos.
+### Encrypt
 
-How to Use
+1. Enter your shared passphrase in the **Passphrase** field.
+2. On the **Encrypt** tab, type your message.
+3. Tap **Encrypt**.
+4. Copy the resulting armored ciphertext block and send it through any channel (text, email, chat, etc.).
 
-The app works on a shared secret model. You and your recipient must agree on the exact same passphrase beforehand.
+### Decrypt
 
-To Send a Message:
+1. Enter the same passphrase in the **Passphrase** field.
+2. Switch to the **Decrypt** tab.
+3. Paste the armored ciphertext block you received.
+4. Tap **Decrypt**.
+5. The original message is displayed.
 
-Open the app and tap "⚙️ Settings".
+### Message Format
 
-Enter your secret passphrase.
+Encrypted output is wrapped in an armored text block that can be safely pasted anywhere:
 
-On the "Encrypt" tab, type your message in the text area.
+```
+-----BEGIN SECRET MESSAGE-----
+eyJ2IjoyLCJhbGciOiJBRVMtR0NNLTI1Ni9QQkt...
+-----END SECRET MESSAGE-----
+```
 
-Tap the "Encrypt & Lock" button.
+The encoded payload contains the algorithm identifier, IV, salt, iteration count, and ciphertext — everything the recipient needs to decrypt (except the passphrase).
 
-A modal will appear with the encrypted ciphertext. Tap "Copy" and send this block of text to your recipient via any messaging service.
+## Running Locally
 
-To Read a Message:
+CIPHER requires a web server because service workers and the Clipboard API need a secure context. Opening `index.html` directly from the filesystem won't work.
 
-Open the app and tap "⚙️ Settings".
+**Quick options:**
 
-Enter the secret passphrase you agreed upon.
+```bash
+# Python
+python3 -m http.server 8000
 
-Switch to the "Decrypt" tab.
+# Node.js (npx, no install needed)
+npx serve .
 
-Paste the encrypted text you received into the message box.
+# VS Code
+# Install the "Live Server" extension and click "Go Live"
+```
 
-Tap the "Decrypt & Reveal" button.
+Then open `http://localhost:8000` in your browser.
 
-The original secret message will be revealed in a modal.
+For production, serve over HTTPS.
 
-Technical Setup
+## Project Structure
 
-To run this app, you need to serve the files from a web server. You cannot simply open the index.html file directly in your browser, as PWA features like service workers require a secure (HTTPS) context.
+```
+index.html              Main application page
+app.js                  Encryption logic and UI
+style.css               Styling, animations, and responsive layout
+service-worker.js       Offline caching (stale-while-revalidate)
+manifest.webmanifest    PWA configuration
+heart-192.png           App icon (192x192)
+heart-512.png           App icon (512x512)
+```
 
-Place Files: Ensure index.html, manifest.webmanifest, and service-worker.js are in the same directory.
+## Security Details
 
-Add Icons: Create and add heart-192.png (192x192) and heart-512.png (512x512) to the same directory.
+| Parameter | Value |
+|---|---|
+| Algorithm | AES-256-GCM |
+| Key Derivation | PBKDF2-SHA256 |
+| Iterations | 310,000 |
+| Min Iterations (decrypt) | 100,000 |
+| Salt | 16 random bytes per message |
+| IV | 12 random bytes per message |
 
-Serve: Use a simple local web server. A great tool for this is the Live Server extension for Visual Studio Code.
+All cryptographic operations use the browser's native `crypto.subtle` API — no custom crypto implementations.
 
-Dedicated to the love of my life B. -Tink
+## License
 
+Made with love by Tink. Dedicated to B.
