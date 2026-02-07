@@ -182,20 +182,42 @@
 
   /**
    * Shows the result modal with a title and content.
+   * Auto-copies to clipboard and selects text for user convenience.
    * @param {string} title The title for the modal.
    * @param {string} content The content for the modal's textarea.
    */
-  function showResult(title, content) {
+  async function showResult(title, content) {
     resultTitleEl.textContent = title;
     resultContentEl.value = content;
     resultOverlay.classList.add('active');
+
+    // Auto-select text for easy copying
+    setTimeout(() => {
+      resultContentEl.focus();
+      resultContentEl.select();
+    }, 100);
+
+    // Auto-copy to clipboard
+    try {
+      await navigator.clipboard.writeText(content);
+      resultCopyBtn.textContent = 'Copied';
+      resultCopyBtn.classList.add('copied');
+      setTimeout(() => {
+        resultCopyBtn.textContent = 'Copy';
+        resultCopyBtn.classList.remove('copied');
+      }, 2000);
+    } catch {
+      // Clipboard access denied, user can still copy manually
+    }
   }
 
   /**
-   * Hides the result modal.
+   * Hides the result modal and resets copy button state.
    */
   function hideResult() {
     resultOverlay.classList.remove('active');
+    resultCopyBtn.textContent = 'Copy';
+    resultCopyBtn.classList.remove('copied');
   }
 
   /**
@@ -248,8 +270,6 @@
     // Reset touched state so textareas clear on next focus
     delete ptEl.dataset.touched;
     delete ctEl.dataset.touched;
-    ptEl.classList.remove('focused');
-    ctEl.classList.remove('focused');
     updatePasswordStrength();
     switchTab('encrypt');
     setStatus('System reset');
@@ -274,7 +294,7 @@
       setStatus('ENCRYPTING...');
       const bundle = await encryptMessage(pass, plaintext);
       const formattedCiphertext = formatCiphertext(bundle);
-      showResult('OUTPUT // ENCRYPTED', formattedCiphertext);
+      showResult('Encrypted', formattedCiphertext);
       setStatus('ENCRYPTION COMPLETE');
     } catch (err) {
       setStatus(`ERROR: ${err.message}`, 'danger');
@@ -303,7 +323,7 @@
       }
       setStatus('DECRYPTING...');
       const msg = await decryptMessage(pass, bundle);
-      showResult('OUTPUT // DECRYPTED', msg);
+      showResult('Decrypted', msg);
       setStatus('DECRYPTION COMPLETE');
     } catch (err) {
       setStatus('ERROR: Decryption failed - invalid passphrase', 'danger');
@@ -322,22 +342,20 @@
 
   /**
    * Copies the content of the result modal to the clipboard.
-   * @param {Event} e The click event object.
    */
-  async function copyResultToClipboard(e) {
+  async function copyResultToClipboard() {
     vibrate();
     const contentToCopy = resultContentEl.value;
     if (!contentToCopy) return;
     try {
       await navigator.clipboard.writeText(contentToCopy);
-      const btn = e.currentTarget;
-      const originalText = btn.textContent;
-      btn.textContent = 'Copied';
+      resultCopyBtn.textContent = 'Copied';
+      resultCopyBtn.classList.add('copied');
       setTimeout(() => {
-        btn.textContent = originalText;
+        resultCopyBtn.textContent = 'Copy';
+        resultCopyBtn.classList.remove('copied');
       }, 1500);
-    } catch (err) {
-      console.error('Failed to copy: ', err);
+    } catch {
       setStatus('ERROR: Clipboard access denied', 'danger');
     }
   }
@@ -391,7 +409,6 @@
       textarea.value = '';
       textarea.dataset.touched = 'true';
     }
-    textarea.classList.add('focused');
   }
 
   /**

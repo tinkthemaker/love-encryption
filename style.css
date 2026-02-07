@@ -19,11 +19,8 @@
     /* Semantic Colors */
     --bg: var(--black);
     --panel: rgba(13, 13, 13, 0.9);
-    --panel-solid: var(--gray-600);
     --text: var(--white);
     --muted: var(--gray-300);
-    --border: var(--gray-400);
-    --accent: var(--white);
 
     /* Sizing */
     --radius: 4px;
@@ -293,10 +290,6 @@ label {
     font-weight: 500;
 }
 
-.settings .form-group {
-    margin-bottom: 0;
-}
-
 input {
     width: 100%;
     background: var(--black);
@@ -373,10 +366,6 @@ input:focus {
     font-weight: 500;
 }
 
-#strength-bar {
-    display: none;
-}
-
 #strength::after {
     content: '';
     color: var(--muted);
@@ -414,10 +403,6 @@ textarea {
 textarea::placeholder {
     color: var(--gray-400);
     transition: opacity var(--transition-fast);
-}
-
-textarea.focused::placeholder {
-    opacity: 0.5;
 }
 
 textarea:focus::placeholder {
@@ -614,6 +599,11 @@ textarea:focus::placeholder {
 .result-footer .btn.primary:hover {
     background: var(--gray-200);
     border-color: var(--gray-200);
+}
+
+.result-footer .btn.primary.copied {
+    background: var(--gray-300);
+    border-color: var(--gray-300);
 }
 
 /* ============================================
