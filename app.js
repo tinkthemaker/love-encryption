@@ -207,7 +207,7 @@
         resultCopyBtn.classList.remove('copied');
       }, 2000);
     } catch {
-      // Clipboard access denied, user can still copy manually
+      setStatus('Auto-copy unavailable — select text above to copy manually', 'muted');
     }
   }
 
@@ -326,7 +326,11 @@
       showResult('Decrypted', msg);
       setStatus('DECRYPTION COMPLETE');
     } catch (err) {
-      setStatus('ERROR: Decryption failed - invalid passphrase', 'danger');
+      if (err.message?.startsWith('Security parameters')) {
+        setStatus(`ERROR: ${err.message}`, 'danger');
+      } else {
+        setStatus('ERROR: Decryption failed — wrong passphrase', 'danger');
+      }
     }
   }
 
