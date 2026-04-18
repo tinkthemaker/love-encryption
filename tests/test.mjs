@@ -52,8 +52,16 @@ function parseCiphertext(armoredText) {
   }
   const jsonString = atob(base64String);
   const bundle = JSON.parse(jsonString);
-  if (!bundle.iv || !bundle.salt || !bundle.ct) {
+  if (typeof bundle !== 'object' || bundle === null || Array.isArray(bundle)) {
+    throw new Error('Invalid encryption data');
+  }
+  if (typeof bundle.iv !== 'string' || !bundle.iv ||
+      typeof bundle.salt !== 'string' || !bundle.salt ||
+      typeof bundle.ct !== 'string' || !bundle.ct) {
     throw new Error('Missing required encryption data');
+  }
+  if (bundle.iters !== undefined && (typeof bundle.iters !== 'number' || bundle.iters <= 0 || !Number.isFinite(bundle.iters))) {
+    throw new Error('Invalid iteration count in message');
   }
   return bundle;
 }
@@ -195,6 +203,38 @@ await test('parseCiphertext: rejects bundle missing required fields', () => {
   assert.throws(
     () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
     /Missing required encryption data/,
+  );
+});
+
+await test('parseCiphertext: rejects bundle where iv/salt/ct are not strings', () => {
+  const bad = btoa(JSON.stringify({ iv: 123, salt: null, ct: [] }));
+  assert.throws(
+    () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
+    /Missing required encryption data/,
+  );
+});
+
+await test('parseCiphertext: rejects non-object JSON payloads', () => {
+  const bad = btoa(JSON.stringify([1, 2, 3]));
+  assert.throws(
+    () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
+    /Invalid encryption data/,
+  );
+});
+
+await test('parseCiphertext: rejects non-finite iters value', () => {
+  const bad = btoa(JSON.stringify({ iv: 'a', salt: 'b', ct: 'c', iters: Infinity }));
+  assert.throws(
+    () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
+    /Invalid iteration count/,
+  );
+});
+
+await test('parseCiphertext: rejects negative iters value', () => {
+  const bad = btoa(JSON.stringify({ iv: 'a', salt: 'b', ct: 'c', iters: -1 }));
+  assert.throws(
+    () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
+    /Invalid iteration count/,
   );
 });
 
