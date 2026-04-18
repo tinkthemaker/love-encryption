@@ -50,6 +50,19 @@ eyJ2IjoyLCJhbGciOiJBRVMtR0NNLTI1Ni9QQkt...
 
 The encoded payload contains the algorithm identifier, IV, salt, iteration count, and ciphertext — everything the recipient needs to decrypt (except the passphrase).
 
+## Browser Compatibility
+
+CIPHER relies on the Web Crypto API, the Clipboard API, and Service Workers. All three are available in every modern browser.
+
+| Feature | Chrome | Firefox | Safari | Edge |
+|---|---|---|---|---|
+| Encrypt / Decrypt | 69+ | 65+ | 13.1+ | 79+ |
+| Auto-copy to clipboard | 69+ | 65+ | 13.1+ | 79+ |
+| Offline (Service Worker) | 69+ | 65+ | 13.1+ | 79+ |
+| Install (Add to Home Screen) | 79+ | — | 16.4+ (iOS) | 79+ |
+
+If clipboard access is denied, the encrypted or decrypted result is still displayed and can be copied manually.
+
 ## Running Locally
 
 CIPHER requires a web server because service workers and the Clipboard API need a secure context. Opening `index.html` directly from the filesystem won't work.
