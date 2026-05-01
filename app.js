@@ -14,11 +14,18 @@
   const clearAllBtn = $('#clearAllBtn');
   const togglePassBtn = $('#togglePassBtn');
   const resultCopyBtn = $('#resultCopyBtn');
+  const resultShareBtn = $('#resultShareBtn');
   const resultDoneBtn = $('#resultDoneBtn');
+  const resultFormatToggle = $('#resultFormatToggle');
+  const formatTextBtn = $('#formatTextBtn');
+  const formatLinkBtn = $('#formatLinkBtn');
   const navEncrypt = $('#nav-encrypt');
   const navDecrypt = $('#nav-decrypt');
   const tabEncrypt = $('#tab-encrypt');
   const tabDecrypt = $('#tab-decrypt');
+
+  // Holds the most recent encrypt result so the Text/Link toggle can re-render.
+  let lastEncryptedBundle = null;
 
   // --- Constants ---
   const APP_VERSION = 2;
@@ -121,6 +128,61 @@
     return bundle;
   }
 
+  /**
+   * Builds a self-contained share link: the ciphertext lives in the URL
+   * fragment, so it never reaches a server.
+   * @param {object} bundle The encrypted data object.
+   * @returns {string} A URL with the bundle encoded in its fragment.
+   */
+  function bundleToShareLink(bundle) {
+    const json = JSON.stringify(bundle);
+    const urlSafe = btoa(json)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    return `${location.origin}${location.pathname}#m=${urlSafe}`;
+  }
+
+  /**
+   * Parses a `#m=...` fragment back into a bundle.
+   * @param {string} fragment The hash fragment, with or without leading '#'.
+   * @returns {object|null} The bundle, or null if not a recognized link.
+   */
+  function parseShareLinkFragment(fragment) {
+    if (!fragment) return null;
+    const match = fragment.match(/#?m=([A-Za-z0-9_\-]+)/);
+    if (!match) return null;
+    let b64 = match[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const bundle = JSON.parse(atob(b64));
+    if (typeof bundle !== 'object' || bundle === null || Array.isArray(bundle)) {
+      throw new Error('Invalid encryption data');
+    }
+    if (typeof bundle.iv !== 'string' || !bundle.iv ||
+        typeof bundle.salt !== 'string' || !bundle.salt ||
+        typeof bundle.ct !== 'string' || !bundle.ct) {
+      throw new Error('Missing required encryption data');
+    }
+    return bundle;
+  }
+
+  /**
+   * Pulls a ciphertext bundle out of arbitrary pasted/shared text. Accepts
+   * armored blocks or share links (which may be embedded in surrounding text).
+   * @param {string} text Raw text from clipboard, share sheet, etc.
+   * @returns {object|null} A bundle if one is found, else null.
+   */
+  function extractBundle(text) {
+    if (!text) return null;
+    if (text.includes('-----BEGIN SECRET MESSAGE-----')) {
+      try { return parseCiphertext(text); } catch { /* fall through */ }
+    }
+    if (text.includes('#m=')) {
+      try { return parseShareLinkFragment(text); } catch { /* fall through */ }
+    }
+    return null;
+  }
+
   // --- Core Crypto Functions ---
 
   /**
@@ -192,11 +254,25 @@
    * Auto-copies to clipboard and selects text for user convenience.
    * @param {string} title The title for the modal.
    * @param {string} content The content for the modal's textarea.
+   * @param {object} [opts] Display options.
+   * @param {boolean} [opts.allowFormatToggle] Show the Text/Link format toggle.
    */
-  async function showResult(title, content) {
+  async function showResult(title, content, opts = {}) {
     resultTitleEl.textContent = title;
     resultContentEl.value = content;
     resultOverlay.classList.add('active');
+
+    // Format toggle is only meaningful for encrypt output
+    if (opts.allowFormatToggle) {
+      resultFormatToggle.hidden = false;
+      setFormatToggle('text');
+    } else {
+      resultFormatToggle.hidden = true;
+    }
+
+    // Show Share button only when the platform supports it
+    const canShare = typeof navigator.share === 'function';
+    resultShareBtn.hidden = !canShare;
 
     // Auto-select text for easy copying
     setTimeout(() => {
@@ -204,9 +280,15 @@
       resultContentEl.select();
     }, 100);
 
-    // Auto-copy to clipboard
+    await copyResultContent({ silent: true });
+  }
+
+  /**
+   * Copies the current result modal content, updating the Copy button state.
+   */
+  async function copyResultContent({ silent = false } = {}) {
     try {
-      await navigator.clipboard.writeText(content);
+      await navigator.clipboard.writeText(resultContentEl.value);
       resultCopyBtn.textContent = 'Copied';
       resultCopyBtn.classList.add('copied');
       setTimeout(() => {
@@ -214,8 +296,30 @@
         resultCopyBtn.classList.remove('copied');
       }, 2000);
     } catch {
-      setStatus('Auto-copy unavailable — select text above to copy manually', 'muted');
+      if (!silent) setStatus('ERROR: Clipboard access denied', 'danger');
+      else setStatus('Auto-copy unavailable — select text above to copy manually', 'muted');
     }
+  }
+
+  /**
+   * Switches the result modal payload between armored text and a share link.
+   * @param {'text'|'link'} mode Which format to display.
+   */
+  function setFormatToggle(mode) {
+    if (!lastEncryptedBundle) return;
+    const isLink = mode === 'link';
+    formatTextBtn.classList.toggle('active', !isLink);
+    formatLinkBtn.classList.toggle('active', isLink);
+    formatTextBtn.setAttribute('aria-checked', isLink ? 'false' : 'true');
+    formatLinkBtn.setAttribute('aria-checked', isLink ? 'true' : 'false');
+    resultContentEl.value = isLink
+      ? bundleToShareLink(lastEncryptedBundle)
+      : formatCiphertext(lastEncryptedBundle);
+    setTimeout(() => {
+      resultContentEl.focus();
+      resultContentEl.select();
+    }, 50);
+    copyResultContent({ silent: true });
   }
 
   /**
@@ -225,6 +329,24 @@
     resultOverlay.classList.remove('active');
     resultCopyBtn.textContent = 'Copy';
     resultCopyBtn.classList.remove('copied');
+    lastEncryptedBundle = null;
+  }
+
+  /**
+   * Invokes the platform share sheet with the current result content.
+   */
+  async function shareResultContent() {
+    vibrate();
+    const text = resultContentEl.value;
+    if (!text || typeof navigator.share !== 'function') return;
+    try {
+      await navigator.share({ text });
+    } catch (err) {
+      // User canceling the share sheet throws AbortError — that's fine.
+      if (err && err.name !== 'AbortError') {
+        setStatus('ERROR: Share unavailable', 'danger');
+      }
+    }
   }
 
   /**
@@ -300,8 +422,8 @@
       }
       setStatus('ENCRYPTING...');
       const bundle = await encryptMessage(pass, plaintext);
-      const formattedCiphertext = formatCiphertext(bundle);
-      showResult('Encrypted', formattedCiphertext);
+      lastEncryptedBundle = bundle;
+      showResult('Encrypted', formatCiphertext(bundle), { allowFormatToggle: true });
       setStatus('ENCRYPTION COMPLETE');
     } catch (err) {
       setStatus(`ERROR: ${err.message}`, 'danger');
@@ -313,22 +435,33 @@
    */
   async function handleDecrypt() {
     vibrate();
+    const raw = ctEl.value.trim();
+    if (!raw) {
+      return setStatus('ERROR: No ciphertext provided', 'danger');
+    }
+    let bundle;
     try {
-      const pass = passEl.value.trim();
-      if (!pass) {
-        return setStatus('ERROR: No passphrase set', 'danger');
-      }
-      const raw = ctEl.value.trim();
-      if (!raw) {
-        return setStatus('ERROR: No ciphertext provided', 'danger');
-      }
-      let bundle;
-      try {
-        bundle = parseCiphertext(raw);
-      } catch {
-        return setStatus('ERROR: Invalid or corrupted ciphertext', 'danger');
-      }
-      setStatus('DECRYPTING...');
+      bundle = extractBundle(raw);
+    } catch {
+      return setStatus('ERROR: Invalid or corrupted ciphertext', 'danger');
+    }
+    if (!bundle) {
+      return setStatus('ERROR: Invalid or corrupted ciphertext', 'danger');
+    }
+    return decryptBundle(bundle);
+  }
+
+  /**
+   * Decrypts an already-extracted bundle using the current passphrase.
+   * @param {object} bundle The encrypted data bundle.
+   */
+  async function decryptBundle(bundle) {
+    const pass = passEl.value.trim();
+    if (!pass) {
+      return setStatus('ERROR: No passphrase set', 'danger');
+    }
+    setStatus('DECRYPTING...');
+    try {
       const msg = await decryptMessage(pass, bundle);
       showResult('Decrypted', msg);
       setStatus('DECRYPTION COMPLETE');
@@ -342,6 +475,63 @@
   }
 
   /**
+   * Pulls a bundle out of pasted text. If found, switches to the decrypt tab,
+   * fills the textarea with the original armored block, and auto-decrypts when
+   * the passphrase is already set. Returns true if a bundle was handled.
+   * @param {string} text The pasted text.
+   * @returns {boolean} Whether a bundle was detected and handled.
+   */
+  function handleIncomingText(text) {
+    if (!text) return false;
+    let bundle;
+    try {
+      bundle = extractBundle(text);
+    } catch {
+      return false;
+    }
+    if (!bundle) return false;
+    switchTab('decrypt');
+    // Always show the canonical armored form in the textarea.
+    ctEl.value = formatCiphertext(bundle);
+    ctEl.dataset.touched = 'true';
+    if (passEl.value.trim()) {
+      decryptBundle(bundle);
+    } else {
+      setStatus('Encrypted message detected — enter passphrase to decrypt');
+      passEl.focus();
+    }
+    return true;
+  }
+
+  /**
+   * Inspects clipboard data on paste; if it's an encrypted message, intercepts
+   * it and routes it through the decrypt flow.
+   */
+  function handlePasteAnywhere(e) {
+    const data = e.clipboardData?.getData('text');
+    if (!data) return;
+    if (handleIncomingText(data)) {
+      e.preventDefault();
+    }
+  }
+
+  /**
+   * On startup, surfaces ciphertext arriving via Web Share Target params or a
+   * `#m=...` URL fragment.
+   */
+  function consumeInboundMessage() {
+    const params = new URLSearchParams(location.search);
+    const candidates = [params.get('text'), params.get('url'), params.get('title'), location.hash];
+    for (const candidate of candidates) {
+      if (candidate && handleIncomingText(candidate)) {
+        // Strip the payload from the URL so it doesn't linger in history.
+        history.replaceState(null, '', location.pathname);
+        return;
+      }
+    }
+  }
+
+  /**
    * Toggles the visibility of the password input field.
    */
   function togglePasswordVisibility() {
@@ -349,26 +539,6 @@
     passEl.type = isPassword ? 'text' : 'password';
     togglePassBtn.classList.toggle('showing', isPassword);
     togglePassBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
-  }
-
-  /**
-   * Copies the content of the result modal to the clipboard.
-   */
-  async function copyResultToClipboard() {
-    vibrate();
-    const contentToCopy = resultContentEl.value;
-    if (!contentToCopy) return;
-    try {
-      await navigator.clipboard.writeText(contentToCopy);
-      resultCopyBtn.textContent = 'Copied';
-      resultCopyBtn.classList.add('copied');
-      setTimeout(() => {
-        resultCopyBtn.textContent = 'Copy';
-        resultCopyBtn.classList.remove('copied');
-      }, 1500);
-    } catch {
-      setStatus('ERROR: Clipboard access denied', 'danger');
-    }
   }
 
   /**
@@ -385,19 +555,25 @@
     // Main action buttons
     encryptBtn.addEventListener('click', handleEncrypt);
     decryptBtn.addEventListener('click', handleDecrypt);
-    
+
     // Settings and utility buttons
     clearAllBtn.addEventListener('click', resetApp);
     togglePassBtn.addEventListener('click', togglePasswordVisibility);
     passEl.addEventListener('input', debounce(updatePasswordStrength, DEBOUNCE_DELAY));
-    
+
     // Modal buttons and overlay
-    resultCopyBtn.addEventListener('click', copyResultToClipboard);
+    resultCopyBtn.addEventListener('click', () => {
+      vibrate();
+      copyResultContent();
+    });
+    resultShareBtn.addEventListener('click', shareResultContent);
     resultDoneBtn.addEventListener('click', hideResult);
     resultOverlay.addEventListener('click', (e) => {
       if (e.target === resultOverlay) hideResult();
     });
-    
+    formatTextBtn.addEventListener('click', () => setFormatToggle('text'));
+    formatLinkBtn.addEventListener('click', () => setFormatToggle('link'));
+
     // Tab navigation
     navEncrypt.addEventListener('click', () => switchTab('encrypt'));
     navDecrypt.addEventListener('click', () => switchTab('decrypt'));
@@ -407,6 +583,13 @@
     ctEl.addEventListener('focus', handleTextareaFocus);
     ptEl.addEventListener('blur', handleTextareaBlur);
     ctEl.addEventListener('blur', handleTextareaBlur);
+
+    // Auto-detect encrypted content on paste — works whether the user is
+    // pasting into the encrypt tab, decrypt tab, or anywhere on the page.
+    document.addEventListener('paste', handlePasteAnywhere);
+
+    // Surface payloads arriving via the OS share sheet or a share link.
+    consumeInboundMessage();
   }
 
   /**

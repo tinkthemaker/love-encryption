@@ -95,9 +95,14 @@
   <div id="resultOverlay" class="result-overlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <div class="result-card">
       <h2 id="resultTitle"></h2>
+      <div id="resultFormatToggle" class="format-toggle" role="radiogroup" aria-label="Output format" hidden>
+        <button id="formatTextBtn" type="button" role="radio" aria-checked="true" class="format-btn active">Text</button>
+        <button id="formatLinkBtn" type="button" role="radio" aria-checked="false" class="format-btn">Link</button>
+      </div>
       <textarea id="resultContent" readonly aria-label="Result content"></textarea>
       <div class="result-footer">
         <button id="resultCopyBtn" class="btn primary" type="button">Copy</button>
+        <button id="resultShareBtn" class="btn" type="button" hidden>Share</button>
         <button id="resultDoneBtn" class="btn" type="button">Close</button>
       </div>
     </div>

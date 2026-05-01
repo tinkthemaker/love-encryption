@@ -1,5 +1,5 @@
 // Service Worker for Given to Fly - Secure Message Encryption App
-const CACHE_NAME = 'love-messages-v2';
+const CACHE_NAME = 'love-messages-v3';
 
 // Core app shell files needed for offline functionality
 const APP_SHELL = [
@@ -69,6 +69,13 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Navigation requests (including Web Share Target launches with query
+  // params) should always resolve to the cached app shell when offline.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(handleNavigation(event.request));
+    return;
+  }
+
   // Use stale-while-revalidate for critical files (HTML, CSS, JS)
   // This serves cached content immediately while fetching updates in background
   if (NETWORK_FIRST.some(file => event.request.url.endsWith(file.slice(1)))) {
@@ -79,6 +86,25 @@ self.addEventListener('fetch', event => {
   // Use cache-first for static assets (images, icons)
   event.respondWith(cacheFirst(event.request));
 });
+
+/**
+ * Navigation strategy: serve cached app shell, regardless of query string,
+ * so share-target launches and deep links work offline.
+ */
+async function handleNavigation(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+      // Cache under the canonical shell URL, not the share-target URL.
+      cache.put('./index.html', networkResponse.clone());
+    }
+    return networkResponse;
+  } catch {
+    const cached = await cache.match('./index.html') || await cache.match('./');
+    return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+  }
+}
 
 /**
  * Stale-while-revalidate strategy:

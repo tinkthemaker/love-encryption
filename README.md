@@ -17,6 +17,8 @@ Inspired by Pearl Jam's *Given to Fly*.
 - **Installable PWA** — Add to your home screen for a native app experience.
 - **Works offline** — Service worker caches everything; no internet needed after first load.
 - **Passphrase strength meter** — Visual feedback on passphrase quality.
+- **Native share & paste** — Send ciphertext through any installed app via the OS share sheet, and have pasted encrypted messages auto-route to the decrypt tab.
+- **Shareable links** — Switch the encrypted output to a `#`-fragment URL; recipients with the PWA installed open the message with a single tap. The payload stays in the URL fragment, so it never reaches a server.
 - **Zero dependencies** — No frameworks, no build tools, no npm. Pure HTML, CSS, and JavaScript.
 
 ## How It Works
@@ -28,15 +30,13 @@ CIPHER uses a **shared secret** model. You and your recipient agree on a passphr
 1. Enter your shared passphrase in the **Passphrase** field.
 2. On the **Encrypt** tab, type your message.
 3. Tap **Encrypt**.
-4. Copy the resulting armored ciphertext block and send it through any channel (text, email, chat, etc.).
+4. In the result dialog, choose **Text** (an armored block, paste anywhere) or **Link** (a URL that opens prefilled in CIPHER), then tap **Share** to send it through your messaging app of choice — or **Copy** to grab it manually.
 
 ### Decrypt
 
 1. Enter the same passphrase in the **Passphrase** field.
-2. Switch to the **Decrypt** tab.
-3. Paste the armored ciphertext block you received.
-4. Tap **Decrypt**.
-5. The original message is displayed.
+2. Paste an encrypted message anywhere in the app — CIPHER auto-detects armored blocks and share links, jumps to the **Decrypt** tab, and decrypts immediately.
+3. Or tap a CIPHER share link from your messages app: it opens the PWA with the ciphertext prefilled, ready to decrypt.
 
 ### Message Format
 
