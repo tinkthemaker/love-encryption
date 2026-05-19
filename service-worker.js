@@ -1,5 +1,5 @@
-// Service Worker for Given to Fly - Secure Message Encryption App
-const CACHE_NAME = 'love-messages-v2';
+// Service Worker for CIPHER - Secure Message Encryption App
+const CACHE_NAME = 'cipher-v2.1';
 
 // Core app shell files needed for offline functionality
 const APP_SHELL = [
@@ -7,12 +7,13 @@ const APP_SHELL = [
   './index.html',
   './style.css',
   './app.js',
+  './crypto.js',
   './heart-192.png',
   './heart-512.png'
 ];
 
 // Files that should always be fetched fresh when online
-const NETWORK_FIRST = ['./app.js', './style.css', './index.html'];
+const NETWORK_FIRST = ['./app.js', './crypto.js', './style.css', './index.html'];
 
 /**
  * Install event: Cache the app shell files.
@@ -25,7 +26,6 @@ self.addEventListener('install', event => {
         return cache.addAll(APP_SHELL);
       })
       .then(() => {
-        // Activate immediately without waiting for open tabs to close
         return self.skipWaiting();
       })
       .catch(err => {
@@ -51,7 +51,6 @@ self.addEventListener('activate', event => {
         );
       })
       .then(() => {
-        // Take control of all clients immediately
         return self.clients.claim();
       })
   );
@@ -70,7 +69,6 @@ self.addEventListener('fetch', event => {
   }
 
   // Use stale-while-revalidate for critical files (HTML, CSS, JS)
-  // This serves cached content immediately while fetching updates in background
   if (NETWORK_FIRST.some(file => event.request.url.endsWith(file.slice(1)))) {
     event.respondWith(staleWhileRevalidate(event.request));
     return;
@@ -88,7 +86,6 @@ async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cachedResponse = await cache.match(request);
 
-  // Fetch in background and update cache
   const fetchPromise = fetch(request)
     .then(networkResponse => {
       if (networkResponse.ok) {
@@ -98,7 +95,6 @@ async function staleWhileRevalidate(request) {
     })
     .catch(() => null);
 
-  // Return cached response immediately, or wait for network
   return cachedResponse || fetchPromise;
 }
 
@@ -121,7 +117,6 @@ async function cacheFirst(request) {
     return networkResponse;
   } catch (err) {
     console.error('[SW] Fetch failed:', err);
-    // Return a fallback response or let the browser handle the error
     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
   }
 }

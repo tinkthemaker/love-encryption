@@ -36,12 +36,12 @@
         </svg>
       </div>
       <h1>Cipher</h1>
-      <span class="version">v2.0</span>
+      <span class="version">v2.1</span>
     </header>
 
     <section class="settings">
       <div class="settings-header">
-        <span class="settings-title">Passphrase</span>
+        <label for="pass" class="settings-title">Passphrase</label>
       </div>
       <div class="settings-content">
         <div class="form-group">
@@ -56,22 +56,24 @@
               <line x1="1" y1="1" x2="23" y2="23"/>
             </svg>
           </button>
-          <div id="strength" role="meter" aria-label="Password strength"></div>
+          <div id="strength" role="meter" aria-label="Password strength" aria-valuetext=""></div>
         </div>
-        <button id="clearAllBtn" class="btn" type="button">Clear All</button>
+        <button id="clearAllBtn" class="btn btn-subtle" type="button">Clear All</button>
       </div>
     </section>
 
     <nav class="tabs-nav" role="tablist" aria-label="Message actions">
-      <button id="nav-encrypt" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-encrypt">Encrypt</button>
-      <button id="nav-decrypt" class="tab-btn decrypt" role="tab" aria-selected="false" aria-controls="tab-decrypt">Decrypt</button>
+      <button id="nav-encrypt" class="tab-btn active" role="tab" type="button" aria-selected="true" aria-controls="tab-encrypt">Encrypt</button>
+      <button id="nav-decrypt" class="tab-btn decrypt" role="tab" type="button" aria-selected="false" aria-controls="tab-decrypt">Decrypt</button>
     </nav>
 
     <div id="tab-encrypt" class="tab-content active" role="tabpanel" aria-labelledby="nav-encrypt">
       <div class="message-card">
         <label for="pt">Input Message</label>
         <textarea id="pt" placeholder="Type your secret message here..." aria-describedby="status"></textarea>
-        <button id="encryptBtn" class="action-btn encrypt">Encrypt</button>
+        <span class="char-count" aria-live="polite"></span>
+        <button id="encryptBtn" class="action-btn encrypt" type="button">Encrypt</button>
+        <span class="hint">Press Enter to encrypt</span>
       </div>
     </div>
 
@@ -79,7 +81,9 @@
       <div class="message-card">
         <label for="ct">Encrypted Data</label>
         <textarea id="ct" placeholder="Paste encrypted message here..." aria-describedby="status"></textarea>
-        <button id="decryptBtn" class="action-btn decrypt">Decrypt</button>
+        <span class="char-count" aria-live="polite"></span>
+        <button id="decryptBtn" class="action-btn decrypt" type="button">Decrypt</button>
+        <span class="hint">Press Enter to decrypt</span>
       </div>
     </div>
 
@@ -97,12 +101,16 @@
       <h2 id="resultTitle"></h2>
       <textarea id="resultContent" readonly aria-label="Result content"></textarea>
       <div class="result-footer">
-        <button id="resultCopyBtn" class="btn primary" type="button">Copy</button>
-        <button id="resultDoneBtn" class="btn" type="button">Close</button>
+        <div class="result-actions">
+          <button id="resultCopyBtn" class="btn primary" type="button">Copy</button>
+          <button id="resultShareBtn" class="btn share-btn" type="button">Share</button>
+        </div>
+        <button id="resultDoneBtn" class="btn btn-close" type="button">Close</button>
       </div>
     </div>
   </div>
 
+  <script src="crypto.js"></script>
   <script src="app.js" defer></script>
 </body>
 </html>

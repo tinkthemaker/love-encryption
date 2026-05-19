@@ -1,6 +1,12 @@
 (() => {
   "use strict";
 
+  // --- Import crypto primitives from shared module ---
+  const {
+    APP_VERSION, KDF_ITERATIONS, DEBOUNCE_DELAY,
+    formatCiphertext, parseCiphertext, encryptMessage, decryptMessage,
+  } = window.CipherCrypto;
+
   // --- DOM Element Selection ---
   const $ = sel => document.querySelector(sel);
   const passEl = $('#pass');
@@ -19,41 +25,16 @@
   const navDecrypt = $('#nav-decrypt');
   const tabEncrypt = $('#tab-encrypt');
   const tabDecrypt = $('#tab-decrypt');
-
-  // --- Constants ---
-  const APP_VERSION = 2;
-  const KDF_ITERATIONS = 310000;
-  const MIN_KDF_ITERATIONS = 100000;
-  const DEBOUNCE_DELAY = 150;
   const strengthEl = $('#strength');
+  const charCountEls = document.querySelectorAll('.char-count');
+
+  // --- State ---
+  let isProcessing = false;
 
   // --- Utility Functions ---
-  const enc = new TextEncoder();
-  const dec = new TextDecoder();
-
-  /**
-   * Safe Base64 encoding/decoding that handles large buffers.
-   * Avoids stack overflow from spread operator on large arrays.
-   */
-  const b64 = {
-    to: buf => {
-      const bytes = new Uint8Array(buf);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      return btoa(binary);
-    },
-    from: str => Uint8Array.from(atob(str), c => c.charCodeAt(0)).buffer
-  };
-
-  const rand = n => crypto.getRandomValues(new Uint8Array(n));
 
   /**
    * Creates a debounced function that delays invocation.
-   * @param {Function} fn The function to debounce.
-   * @param {number} delay Delay in milliseconds.
-   * @returns {Function} The debounced function.
    */
   function debounce(fn, delay) {
     let timeoutId;
@@ -72,109 +53,24 @@
     }
   }
 
-  // --- Ciphertext Formatting Functions ---
+  // --- Character Count ---
 
   /**
-   * Formats an encrypted bundle into an armored text block.
-   * @param {object} bundle The encrypted data object.
-   * @returns {string} The formatted ciphertext string.
+   * Updates the character count display for the active textarea.
    */
-  function formatCiphertext(bundle) {
-    const jsonString = JSON.stringify(bundle);
-    const base64String = btoa(jsonString);
-    const lines = base64String.match(/.{1,64}/g) || [];
-    return `-----BEGIN SECRET MESSAGE-----\n${lines.join('\n')}\n-----END SECRET MESSAGE-----`;
-  }
-
-  /**
-   * Parses an armored text block back into an object.
-   * @param {string} armoredText The formatted ciphertext.
-   * @returns {object} The parsed encrypted data object.
-   * @throws {Error} If the ciphertext format is invalid.
-   */
-  function parseCiphertext(armoredText) {
-    const trimmed = armoredText.trim();
-    if (!trimmed.includes('-----BEGIN SECRET MESSAGE-----') ||
-        !trimmed.includes('-----END SECRET MESSAGE-----')) {
-      throw new Error('Invalid message format');
-    }
-    const base64String = trimmed
-      .replace('-----BEGIN SECRET MESSAGE-----', '')
-      .replace('-----END SECRET MESSAGE-----', '')
-      .replace(/\s/g, '');
-    if (!base64String) {
-      throw new Error('Empty message content');
-    }
-    const jsonString = atob(base64String);
-    const bundle = JSON.parse(jsonString);
-    if (typeof bundle !== 'object' || bundle === null || Array.isArray(bundle)) {
-      throw new Error('Invalid encryption data');
-    }
-    if (typeof bundle.iv !== 'string' || !bundle.iv ||
-        typeof bundle.salt !== 'string' || !bundle.salt ||
-        typeof bundle.ct !== 'string' || !bundle.ct) {
-      throw new Error('Missing required encryption data');
-    }
-    if (bundle.iters !== undefined && (typeof bundle.iters !== 'number' || bundle.iters <= 0 || !Number.isFinite(bundle.iters))) {
-      throw new Error('Invalid iteration count in message');
-    }
-    return bundle;
-  }
-
-  // --- Core Crypto Functions ---
-
-  /**
-   * Derives a cryptographic key from a password and salt.
-   * @param {string} pass The user's password.
-   * @param {Uint8Array} salt A random salt.
-   * @param {number} iterations The number of PBKDF2 iterations.
-   * @returns {Promise<CryptoKey>} The derived AES-GCM key.
-   */
-  async function deriveKey(pass, salt, iterations) {
-    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
-    return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-  }
-
-  /**
-   * Encrypts a plaintext message with a password.
-   * @param {string} pass The user's password.
-   * @param {string} plaintext The message to encrypt.
-   * @returns {Promise<object>} An object containing the encrypted data and parameters.
-   */
-  async function encryptMessage(pass, plaintext) {
-    const salt = rand(16);
-    const iv = rand(12);
-    const key = await deriveKey(pass, salt, KDF_ITERATIONS);
-    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
-    return { v: APP_VERSION, alg: 'AES-GCM-256/PBKDF2-SHA256', iv: b64.to(iv), salt: b64.to(salt), iters: KDF_ITERATIONS, ct: b64.to(ct) };
-  }
-
-  /**
-   * Decrypts a bundle of encrypted data with a password.
-   * @param {string} pass The user's password.
-   * @param {object} bundle The encrypted data bundle.
-   * @returns {Promise<string>} The decrypted plaintext message.
-   * @throws {Error} If iterations count is below minimum threshold.
-   */
-  async function decryptMessage(pass, bundle) {
-    const iv = b64.from(bundle.iv);
-    const salt = b64.from(bundle.salt);
-    const iterations = Number(bundle.iters || KDF_ITERATIONS);
-    // Prevent downgrade attacks by enforcing minimum iterations
-    if (iterations < MIN_KDF_ITERATIONS) {
-      throw new Error('Security parameters below acceptable threshold');
-    }
-    const key = await deriveKey(pass, salt, iterations);
-    const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, b64.from(bundle.ct));
-    return dec.decode(ptBuf);
+  function updateCharCount() {
+    const isEncrypt = isEncryptTab();
+    const activeTextarea = isEncrypt ? ptEl : ctEl;
+    const count = activeTextarea.value.length;
+    charCountEls.forEach(el => {
+      el.textContent = count > 0 ? `${count.toLocaleString()} chars` : '';
+    });
   }
 
   // --- UI Functions ---
 
   /**
    * Displays a status message to the user.
-   * @param {string} msg The message to display.
-   * @param {string} [type='muted'] The type of message (e.g., 'danger', 'ok').
    */
   function setStatus(msg, type = 'muted') {
     statusEl.textContent = msg;
@@ -188,15 +84,42 @@
   }
 
   /**
+   * Sets the processing state on action buttons.
+   * Disables buttons and shows loading text during crypto operations.
+   */
+  function setProcessing(processing) {
+    isProcessing = processing;
+    encryptBtn.disabled = processing;
+    decryptBtn.disabled = processing;
+
+    if (processing) {
+      // Store original text and replace with processing indicator
+      encryptBtn.dataset.originalText = encryptBtn.textContent;
+      decryptBtn.dataset.originalText = decryptBtn.textContent;
+      encryptBtn.textContent = isEncryptTab() ? 'Working\u2026' : 'Working\u2026';
+      decryptBtn.textContent = isEncryptTab() ? 'Working\u2026' : 'Working\u2026';
+      encryptBtn.classList.add('processing');
+      decryptBtn.classList.add('processing');
+    } else {
+      encryptBtn.textContent = encryptBtn.dataset.originalText || 'Encrypt';
+      decryptBtn.textContent = decryptBtn.dataset.originalText || 'Decrypt';
+      encryptBtn.classList.remove('processing');
+      decryptBtn.classList.remove('processing');
+    }
+  }
+
+  /**
    * Shows the result modal with a title and content.
    * Auto-copies to clipboard and selects text for user convenience.
-   * @param {string} title The title for the modal.
-   * @param {string} content The content for the modal's textarea.
+   * Auto-expands the textarea to fit content.
    */
   async function showResult(title, content) {
     resultTitleEl.textContent = title;
     resultContentEl.value = content;
     resultOverlay.classList.add('active');
+
+    // Auto-expand textarea to fit content
+    autoExpandTextarea(resultContentEl);
 
     // Auto-select text for easy copying
     setTimeout(() => {
@@ -214,8 +137,17 @@
         resultCopyBtn.classList.remove('copied');
       }, 2000);
     } catch {
-      setStatus('Auto-copy unavailable — select text above to copy manually', 'muted');
+      setStatus('Auto-copy unavailable \u2014 select text above to copy manually', 'muted');
     }
+  }
+
+  /**
+   * Auto-expands a textarea to fit its content.
+   */
+  function autoExpandTextarea(el) {
+    el.style.height = 'auto';
+    const maxH = Math.min(el.scrollHeight, window.innerHeight * 0.5);
+    el.style.height = Math.max(140, maxH) + 'px';
   }
 
   /**
@@ -225,25 +157,49 @@
     resultOverlay.classList.remove('active');
     resultCopyBtn.textContent = 'Copy';
     resultCopyBtn.classList.remove('copied');
+    resultContentEl.style.height = '';
   }
 
   /**
    * Switches between the Encrypt and Decrypt tabs.
-   * @param {string} tabName The name of the tab to switch to ('encrypt' or 'decrypt').
+   * Updates labels and character count to match active tab.
    */
   function switchTab(tabName) {
     const isEncrypt = tabName === 'encrypt';
     navEncrypt.classList.toggle('active', isEncrypt);
     tabEncrypt.classList.toggle('active', isEncrypt);
     navDecrypt.classList.toggle('active', !isEncrypt);
-    tabDecrypt.classList.toggle('active', !isEncrypt);
-    // Update ARIA attributes
     navEncrypt.setAttribute('aria-selected', isEncrypt ? 'true' : 'false');
     navDecrypt.setAttribute('aria-selected', isEncrypt ? 'false' : 'true');
+
+    // Update button labels
+    encryptBtn.textContent = 'Encrypt';
+    decryptBtn.textContent = 'Decrypt';
+
+    // Update dynamic labels and placeholders based on active tab
+    const ptLabel = document.querySelector('label[for="pt"]');
+    const ctLabel = document.querySelector('label[for="ct"]');
+    if (ptLabel) ptLabel.textContent = isEncrypt ? 'Input Message' : 'Plaintext';
+    if (ctLabel) ctLabel.textContent = isEncrypt ? 'Encrypted Data' : 'Paste Encrypted Message';
+
+    // Update placeholders to match context
+    ptEl.placeholder = isEncrypt ? 'Type your secret message here\u2026' : 'Type the message you want to protect\u2026';
+    ctEl.placeholder = isEncrypt ? 'Paste encrypted message here\u2026' : 'Paste the encrypted message you received\u2026';
+
+    // Update character count for active textarea
+    updateCharCount();
+  }
+
+  /**
+   * Returns whether the encrypt tab is currently active.
+   */
+  function isEncryptTab() {
+    return navEncrypt.classList.contains('active');
   }
 
   /**
    * Updates the password strength meter based on input.
+   * Sets aria-valuetext for screen reader accessibility.
    */
   function updatePasswordStrength() {
     const pass = passEl.value;
@@ -256,27 +212,60 @@
     if (/[^A-Za-z0-9]/.test(pass)) score++;
 
     strengthEl.className = '';
+    let label = '';
     if (!pass) {
       // No password entered
+      strengthEl.removeAttribute('aria-valuetext');
     } else if (score >= 5) {
       strengthEl.classList.add('strong');
+      label = 'Strong';
     } else if (score >= 3) {
       strengthEl.classList.add('medium');
+      label = 'Medium';
     } else {
       strengthEl.classList.add('weak');
+      label = 'Weak';
+    }
+    if (label) {
+      strengthEl.setAttribute('aria-valuetext', label);
     }
   }
 
   /**
    * Resets the application to its initial state.
+   * Requires double-click confirmation to prevent accidental data loss.
    */
+  let resetConfirmTimeout = null;
   function resetApp() {
+    // If there's nothing to clear, just reset the button state
+    const hasContent = passEl.value || ptEl.value || ctEl.value;
+    if (!hasContent) {
+      clearAllBtn.textContent = 'Clear All';
+      clearAllBtn.classList.remove('confirm');
+      return;
+    }
+
+    // First click: ask for confirmation
+    if (!clearAllBtn.classList.contains('confirm')) {
+      clearAllBtn.textContent = 'Confirm Clear?';
+      clearAllBtn.classList.add('confirm');
+
+      // Reset button after 3 seconds if no second click
+      resetConfirmTimeout = setTimeout(() => {
+        clearAllBtn.textContent = 'Clear All';
+        clearAllBtn.classList.remove('confirm');
+      }, 3000);
+      return;
+    }
+
+    // Second click: confirmed
+    clearTimeout(resetConfirmTimeout);
+    clearAllBtn.textContent = 'Clear All';
+    clearAllBtn.classList.remove('confirm');
+
     ptEl.value = '';
     ctEl.value = '';
     passEl.value = '';
-    // Reset touched state so textareas clear on next focus
-    delete ptEl.dataset.touched;
-    delete ctEl.dataset.touched;
     updatePasswordStrength();
     switchTab('encrypt');
     setStatus('System reset');
@@ -288,6 +277,7 @@
    * Handles the encryption process when the encrypt button is clicked.
    */
   async function handleEncrypt() {
+    if (isProcessing) return;
     vibrate();
     try {
       const pass = passEl.value.trim();
@@ -298,6 +288,7 @@
       if (!plaintext) {
         return setStatus('ERROR: No message to encrypt', 'danger');
       }
+      setProcessing(true);
       setStatus('ENCRYPTING...');
       const bundle = await encryptMessage(pass, plaintext);
       const formattedCiphertext = formatCiphertext(bundle);
@@ -305,6 +296,8 @@
       setStatus('ENCRYPTION COMPLETE');
     } catch (err) {
       setStatus(`ERROR: ${err.message}`, 'danger');
+    } finally {
+      setProcessing(false);
     }
   }
 
@@ -312,6 +305,7 @@
    * Handles the decryption process when the decrypt button is clicked.
    */
   async function handleDecrypt() {
+    if (isProcessing) return;
     vibrate();
     try {
       const pass = passEl.value.trim();
@@ -328,6 +322,7 @@
       } catch {
         return setStatus('ERROR: Invalid or corrupted ciphertext', 'danger');
       }
+      setProcessing(true);
       setStatus('DECRYPTING...');
       const msg = await decryptMessage(pass, bundle);
       showResult('Decrypted', msg);
@@ -336,8 +331,10 @@
       if (err.message?.startsWith('Security parameters')) {
         setStatus(`ERROR: ${err.message}`, 'danger');
       } else {
-        setStatus('ERROR: Decryption failed — wrong passphrase', 'danger');
+        setStatus('ERROR: Decryption failed \u2014 wrong passphrase', 'danger');
       }
+    } finally {
+      setProcessing(false);
     }
   }
 
@@ -372,6 +369,24 @@
   }
 
   /**
+   * Shares the result content using the Web Share API if available,
+   * falls back to copying to clipboard.
+   */
+  async function shareResult() {
+    const contentToShare = resultContentEl.value;
+    if (!contentToShare) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: contentToShare });
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+    await copyResultToClipboard();
+  }
+
+  /**
    * Initializes the application by setting up event listeners and initial states.
    */
   function init() {
@@ -382,54 +397,66 @@
       });
     }
 
+    // Hide Share button when Web Share API is not available
+    if (!navigator.share) {
+      document.body.classList.add('no-share-api');
+    }
+
     // Main action buttons
     encryptBtn.addEventListener('click', handleEncrypt);
     decryptBtn.addEventListener('click', handleDecrypt);
-    
-    // Settings and utility buttons
+
+    // Clear All (requires double-click confirmation)
     clearAllBtn.addEventListener('click', resetApp);
     togglePassBtn.addEventListener('click', togglePasswordVisibility);
     passEl.addEventListener('input', debounce(updatePasswordStrength, DEBOUNCE_DELAY));
-    
+
+    // Character count on textarea input
+    ptEl.addEventListener('input', updateCharCount);
+    ctEl.addEventListener('input', updateCharCount);
+
     // Modal buttons and overlay
     resultCopyBtn.addEventListener('click', copyResultToClipboard);
     resultDoneBtn.addEventListener('click', hideResult);
     resultOverlay.addEventListener('click', (e) => {
       if (e.target === resultOverlay) hideResult();
     });
-    
+
+    // Share button
+    const resultShareBtn = $('#resultShareBtn');
+    if (resultShareBtn) {
+      resultShareBtn.addEventListener('click', shareResult);
+    }
+
     // Tab navigation
     navEncrypt.addEventListener('click', () => switchTab('encrypt'));
     navDecrypt.addEventListener('click', () => switchTab('decrypt'));
 
-    // Textarea interaction - clear on first click, reset on empty blur
-    ptEl.addEventListener('focus', handleTextareaFocus);
-    ctEl.addEventListener('focus', handleTextareaFocus);
-    ptEl.addEventListener('blur', handleTextareaBlur);
-    ctEl.addEventListener('blur', handleTextareaBlur);
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeyboard);
   }
 
   /**
-   * Clears textarea content on first focus for easy typing.
-   * @param {Event} e The focus event.
+   * Global keyboard shortcut handler.
    */
-  function handleTextareaFocus(e) {
-    const textarea = e.target;
-    // Clear placeholder/existing text on first click for fresh input
-    if (!textarea.dataset.touched) {
-      textarea.value = '';
-      textarea.dataset.touched = 'true';
+  function handleKeyboard(e) {
+    // Escape closes the result modal
+    if (e.key === 'Escape' && resultOverlay.classList.contains('active')) {
+      e.preventDefault();
+      hideResult();
+      return;
     }
-  }
 
-  /**
-   * Resets textarea touched state when empty on blur.
-   * @param {Event} e The blur event.
-   */
-  function handleTextareaBlur(e) {
-    const textarea = e.target;
-    if (!textarea.value.trim()) {
-      delete textarea.dataset.touched;
+    // Enter triggers encrypt/decrypt (but not inside a textarea)
+    if (e.key === 'Enter' && !e.shiftKey && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      if (resultOverlay.classList.contains('active')) {
+        hideResult();
+      } else if (isEncryptTab()) {
+        handleEncrypt();
+      } else {
+        handleDecrypt();
+      }
     }
   }
 
@@ -437,4 +464,3 @@
   document.addEventListener('DOMContentLoaded', init);
 
 })();
-
