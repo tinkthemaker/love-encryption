@@ -96,8 +96,8 @@
       // Store original text and replace with processing indicator
       encryptBtn.dataset.originalText = encryptBtn.textContent;
       decryptBtn.dataset.originalText = decryptBtn.textContent;
-      encryptBtn.textContent = isEncryptTab() ? 'Working\u2026' : 'Working\u2026';
-      decryptBtn.textContent = isEncryptTab() ? 'Working\u2026' : 'Working\u2026';
+      encryptBtn.textContent = 'Working\u2026';
+      decryptBtn.textContent = 'Working\u2026';
       encryptBtn.classList.add('processing');
       decryptBtn.classList.add('processing');
     } else {
@@ -168,6 +168,7 @@
     const isEncrypt = tabName === 'encrypt';
     navEncrypt.classList.toggle('active', isEncrypt);
     tabEncrypt.classList.toggle('active', isEncrypt);
+    tabDecrypt.classList.toggle('active', !isEncrypt);
     navDecrypt.classList.toggle('active', !isEncrypt);
     navEncrypt.setAttribute('aria-selected', isEncrypt ? 'true' : 'false');
     navDecrypt.setAttribute('aria-selected', isEncrypt ? 'false' : 'true');
