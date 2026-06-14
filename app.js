@@ -14,12 +14,19 @@
   const resultOverlay = $('#resultOverlay');
   const resultTitleEl = $('#resultTitle');
   const resultContentEl = $('#resultContent');
+  const resultQrWrap = $('#resultQrWrap');
+  const resultQrCanvas = $('#resultQrCanvas');
+  const resultHintEl = $('#resultHint');
   const statusEl = $('#status');
   const encryptBtn = $('#encryptBtn');
   const decryptBtn = $('#decryptBtn');
   const clearAllBtn = $('#clearAllBtn');
   const togglePassBtn = $('#togglePassBtn');
+  const generatePassBtn = $('#generatePassBtn');
   const resultCopyBtn = $('#resultCopyBtn');
+  const resultLinkBtn = $('#resultLinkBtn');
+  const resultQrBtn = $('#resultQrBtn');
+  const resultReplyBtn = $('#resultReplyBtn');
   const resultDoneBtn = $('#resultDoneBtn');
   const navEncrypt = $('#nav-encrypt');
   const navDecrypt = $('#nav-decrypt');
@@ -30,6 +37,14 @@
 
   // --- State ---
   let isProcessing = false;
+  // Result-mode flags control which extra buttons are visible on the modal.
+  // 'plaintext'  = decryption result (no QR/Link, but Reply)
+  // 'ciphertext' = encryption result (QR + Link, no Reply)
+  let lastResultMode = null;
+  // Session passphrase: held only in memory for the lifetime of the page
+  // (never persisted). Lets Reply prefills work without re-typing.
+  // Not used for anything except the Reply shortcut.
+  let sessionPassphrase = '';
 
   // --- Utility Functions ---
 
@@ -109,12 +124,18 @@
   }
 
   /**
-   * Shows the result modal with a title and content.
-   * Auto-copies to clipboard and selects text for user convenience.
-   * Auto-expands the textarea to fit content.
+   * Shows the result modal with a title, content, and mode-driven actions.
+   * @param {'encrypted'|'decrypted'} mode What kind of result this is.
+   *   'encrypted' shows Link/QR buttons (good for sending to B).
+   *   'decrypted' shows Reply (good for continuing the conversation).
+   * @param {string} content The text to show in the textarea.
+   * @param {object} [opts]
+   * @param {string} [opts.hint] Optional hint copy shown under the textarea.
    */
-  async function showResult(title, content) {
-    resultTitleEl.textContent = title;
+  async function showResult(mode, content, opts = {}) {
+    lastResultMode = mode;
+    const isEncrypted = mode === 'encrypted';
+    resultTitleEl.textContent = isEncrypted ? 'Encrypted' : 'Decrypted';
     resultContentEl.value = content;
     resultOverlay.classList.add('active');
 
@@ -139,6 +160,20 @@
     } catch {
       setStatus('Auto-copy unavailable \u2014 select text above to copy manually', 'muted');
     }
+
+    // Mode-driven extra controls
+    resultLinkBtn.hidden = !isEncrypted;
+    resultQrBtn.hidden = !isEncrypted;
+    resultReplyBtn.hidden = isEncrypted;
+    resultQrWrap.hidden = true; // hidden until QR button is toggled
+
+    // Show contextual hint under the textarea
+    if (opts.hint) {
+      resultHintEl.innerHTML = opts.hint;
+      resultHintEl.hidden = false;
+    } else {
+      resultHintEl.hidden = true;
+    }
   }
 
   /**
@@ -151,13 +186,154 @@
   }
 
   /**
-   * Hides the result modal and resets copy button state.
+   * Hides the result modal and resets all controls to default.
    */
   function hideResult() {
     resultOverlay.classList.remove('active');
     resultCopyBtn.textContent = 'Copy';
     resultCopyBtn.classList.remove('copied');
     resultContentEl.style.height = '';
+    resultQrWrap.hidden = true;
+    resultHintEl.hidden = true;
+    lastResultMode = null;
+  }
+
+  /**
+   * Encodes the current result content as a #d=... URL fragment on the
+   * current page. The fragment is never sent to servers — it stays client-side.
+   * @returns {string} The full shareable URL.
+   */
+  function buildShareLink() {
+    const content = resultContentEl.value;
+    if (!content) return '';
+    const encoded = btoa(unescape(encodeURIComponent(content)));
+    const base = `${location.origin}${location.pathname}`;
+    return `${base}#d=${encoded}`;
+  }
+
+  /**
+   * Renders a QR code onto the result modal canvas. Hides the textarea
+   * while the QR is showing.
+   */
+  function showQrCode() {
+    const url = buildShareLink();
+    console.log('[QR] showQrCode called, url length:', url?.length);
+    if (!url || typeof window.qrcode !== 'function') {
+      console.log('[QR] bailing: url=', !!url, 'qrcode type=', typeof window.qrcode);
+      setStatus('QR code generation unavailable', 'danger');
+      return;
+    }
+    try {
+      const qr = window.qrcode(0, 'L');
+      qr.addData(url);
+      qr.make();
+      const moduleCount = qr.getModuleCount();
+      const size = 240;
+      const cellSize = Math.floor(size / moduleCount);
+      const actualSize = cellSize * moduleCount;
+      console.log('[QR] moduleCount=', moduleCount, 'cellSize=', cellSize, 'actualSize=', actualSize);
+      resultQrCanvas.width = actualSize;
+      resultQrCanvas.height = actualSize;
+      const ctx = resultQrCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, actualSize, actualSize);
+      ctx.fillStyle = '#000000';
+      let darks = 0;
+      for (let r = 0; r < moduleCount; r++) {
+        for (let c = 0; c < moduleCount; c++) {
+          if (qr.isDark(r, c)) {
+            ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+            darks++;
+          }
+        }
+      }
+      console.log('[QR] drew', darks, 'dark modules');
+      const px = ctx.getImageData(0, 0, 1, 1).data;
+      console.log('[QR] top-left pixel after draw:', px[0], px[1], px[2], px[3]);
+      resultContentEl.hidden = true;
+      resultQrWrap.hidden = false;
+    } catch (err) {
+      console.log('[QR] error:', err.message);
+      setStatus(`ERROR: ${err.message}`, 'danger');
+    }
+  }
+
+  /**
+   * Hides the QR code and shows the textarea again.
+   */
+  function hideQrCode() {
+    resultQrWrap.hidden = true;
+    resultContentEl.hidden = false;
+  }
+
+  /**
+   * Copies the shareable #d= URL to the clipboard (not just the ciphertext).
+   * Useful when the recipient is on the same network or you'll send them a link.
+   */
+  async function copyShareLink() {
+    const url = buildShareLink();
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      resultLinkBtn.textContent = 'Copied';
+      resultLinkBtn.classList.add('copied');
+      setTimeout(() => {
+        resultLinkBtn.textContent = 'Link';
+        resultLinkBtn.classList.remove('copied');
+      }, 1500);
+    } catch {
+      setStatus('ERROR: Clipboard access denied', 'danger');
+    }
+  }
+
+  /**
+   * Fills the encrypt tab with the just-decrypted message, switches to it,
+   * and seeds the passphrase field with the session passphrase (so a Reply
+   * is one click away). Cleared if the user edits the passphrase.
+   */
+  function replyWithDecrypted() {
+    const replyText = resultContentEl.value;
+    if (!replyText) return;
+    // Hide modal first so the textarea reflow doesn't look broken
+    hideResult();
+    // Switch to encrypt tab
+    switchTab('encrypt');
+    // Prefill the message and passphrase (in-memory only)
+    ptEl.value = replyText;
+    if (sessionPassphrase) passEl.value = sessionPassphrase;
+    updateCharCount();
+    setStatus('Ready to reply \u2014 tweak the message and press Enter', 'muted');
+    ptEl.focus();
+  }
+
+  /**
+   * On page load: if the URL fragment contains a #d=... payload, treat it
+   * as a shared ciphertext, prefill the decrypt textarea, and switch tabs.
+   * The fragment is then cleared from the address bar so it doesn't linger
+   * in browser history or get bookmarked.
+   */
+  function consumeShareFragment() {
+    const hash = location.hash || '';
+    const match = hash.match(/^#d=(.+)$/);
+    if (!match) return;
+    try {
+      const decoded = decodeURIComponent(escape(atob(match[1])));
+      // Validate quickly: must look like one of our armored blocks
+      if (decoded.includes('-----BEGIN SECRET MESSAGE-----') &&
+          decoded.includes('-----END SECRET MESSAGE-----')) {
+        ctEl.value = decoded;
+        switchTab('decrypt');
+        setStatus('Encrypted message loaded \u2014 type the passphrase and press Enter', 'muted');
+      }
+    } catch {
+      // Bad fragment, ignore silently
+    }
+    // Clear the fragment from the address bar
+    if (history.replaceState) {
+      history.replaceState(null, '', location.pathname + location.search);
+    } else {
+      location.hash = '';
+    }
   }
 
   /**
@@ -201,6 +377,11 @@
   /**
    * Updates the password strength meter based on input.
    * Sets aria-valuetext for screen reader accessibility.
+   *
+   * Scoring: 0-6 points based on length, character class diversity.
+   * Multi-word diceware-style passphrases (3+ words separated by
+   * hyphens or spaces) get a bonus — they don't have upper-case or
+   * digits, but they have high entropy.
    */
   function updatePasswordStrength() {
     const pass = passEl.value;
@@ -211,6 +392,10 @@
     if (/[a-z]/.test(pass)) score++;
     if (/[0-9]/.test(pass)) score++;
     if (/[^A-Za-z0-9]/.test(pass)) score++;
+    // Multi-word passphrase bonus (e.g. "word1-word2-word3-word4").
+    // Count words by splitting on spaces or hyphens; 3+ words = +1.
+    const wordCount = (pass.match(/[\s\-]+/g) || []).length + (pass ? 1 : 0);
+    if (wordCount >= 3) score += 1;
 
     strengthEl.className = '';
     let label = '';
@@ -235,6 +420,7 @@
   /**
    * Resets the application to its initial state.
    * Requires double-click confirmation to prevent accidental data loss.
+   * Also wipes the in-memory session passphrase.
    */
   let resetConfirmTimeout = null;
   function resetApp() {
@@ -267,6 +453,7 @@
     ptEl.value = '';
     ctEl.value = '';
     passEl.value = '';
+    sessionPassphrase = ''; // forget the in-memory passphrase
     updatePasswordStrength();
     switchTab('encrypt');
     setStatus('System reset');
@@ -283,18 +470,26 @@
     try {
       const pass = passEl.value.trim();
       if (!pass) {
-        return setStatus('ERROR: No passphrase set', 'danger');
+        return setStatus('Type the passphrase you and B agreed on first', 'danger');
       }
       const plaintext = ptEl.value.trim();
       if (!plaintext) {
-        return setStatus('ERROR: No message to encrypt', 'danger');
+        return setStatus('Type the message you want to protect', 'danger');
       }
       setProcessing(true);
       setStatus('ENCRYPTING...');
       const bundle = await encryptMessage(pass, plaintext);
       const formattedCiphertext = formatCiphertext(bundle);
-      showResult('Encrypted', formattedCiphertext);
+      // Remember the passphrase in memory for the Reply shortcut.
+      // Never persisted, cleared on tab close or Clear All.
+      sessionPassphrase = pass;
+      showResult('encrypted', formattedCiphertext, {
+        hint: 'Paste this in any messenger. <strong>Send the passphrase to B separately</strong> \u2014 in person, on a call, or in a different message. Never text it with the message.',
+      });
       setStatus('ENCRYPTION COMPLETE');
+      // Auto-clear the plaintext from the input so it doesn't sit on screen
+      ptEl.value = '';
+      updateCharCount();
     } catch (err) {
       setStatus(`ERROR: ${err.message}`, 'danger');
     } finally {
@@ -311,28 +506,32 @@
     try {
       const pass = passEl.value.trim();
       if (!pass) {
-        return setStatus('ERROR: No passphrase set', 'danger');
+        return setStatus('Type the passphrase you and B agreed on first', 'danger');
       }
       const raw = ctEl.value.trim();
       if (!raw) {
-        return setStatus('ERROR: No ciphertext provided', 'danger');
+        return setStatus('Paste the encrypted message B sent you', 'danger');
       }
       let bundle;
       try {
         bundle = parseCiphertext(raw);
       } catch {
-        return setStatus('ERROR: Invalid or corrupted ciphertext', 'danger');
+        return setStatus("That doesn't look like a CIPHER message \u2014 check the BEGIN/END markers", 'danger');
       }
       setProcessing(true);
       setStatus('DECRYPTING...');
       const msg = await decryptMessage(pass, bundle);
-      showResult('Decrypted', msg);
+      // Remember the passphrase in memory for the Reply shortcut
+      sessionPassphrase = pass;
+      showResult('decrypted', msg, {
+        hint: 'Tap <strong>Reply</strong> below to send a message back. The passphrase stays in memory for this tab only \u2014 close the tab and it\u2019s gone.',
+      });
       setStatus('DECRYPTION COMPLETE');
     } catch (err) {
       if (err.message?.startsWith('Security parameters')) {
         setStatus(`ERROR: ${err.message}`, 'danger');
       } else {
-        setStatus('ERROR: Decryption failed \u2014 wrong passphrase', 'danger');
+        setStatus("Couldn\u2019t decrypt \u2014 double-check the passphrase and try again", 'danger');
       }
     } finally {
       setProcessing(false);
@@ -347,6 +546,59 @@
     passEl.type = isPassword ? 'text' : 'password';
     togglePassBtn.classList.toggle('showing', isPassword);
     togglePassBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
+  }
+
+  /**
+   * Generates a random passphrase using EFF Diceware short wordlist.
+   * Uses crypto.getRandomValues for unbiased selection.
+   * @param {number} [wordCount=4] Number of words (4 = ~41 bits, 5 = ~52 bits)
+   * @returns {string} Hyphen-separated passphrase
+   */
+  function generatePassphrase(wordCount = 4) {
+    const list = window.EFF_DICEWARE_SHORT;
+    if (!list || !Array.isArray(list) || list.length === 0) {
+      throw new Error('Word list not loaded');
+    }
+    const words = [];
+    // For each word, need log2(list.length) bits = log2(1296) = 10.34 bits.
+    // Use rejection sampling: draw 16 bits at a time, reject >= 1296.
+    const max = list.length;
+    const randBuf = new Uint16Array(wordCount);
+    crypto.getRandomValues(randBuf);
+    for (let i = 0; i < wordCount; i++) {
+      // Reject any value >= 1296 to avoid modulo bias
+      // 65536 / 1296 = 50.57, so 50 * 1296 = 64800 max safe value
+      let n = randBuf[i];
+      while (n >= 50 * max) {
+        const r = new Uint16Array(1);
+        crypto.getRandomValues(r);
+        n = r[0];
+      }
+      words.push(list[n % max]);
+    }
+    return words.join('-');
+  }
+
+  /**
+   * Click handler for the Generate button. Creates a fresh passphrase,
+   * places it in the passphrase field, makes it visible so the user can
+   * read and copy it, and refreshes the strength meter.
+   */
+  function handleGeneratePassphrase() {
+    try {
+      const pass = generatePassphrase(4);
+      passEl.value = pass;
+      // Show the passphrase so the user can read it to share
+      passEl.type = 'text';
+      togglePassBtn.classList.add('showing');
+      togglePassBtn.setAttribute('aria-pressed', 'true');
+      updatePasswordStrength();
+      passEl.focus();
+      passEl.select();
+      setStatus('Fresh passphrase generated \u2014 share it with B on a call, then hide it', 'muted');
+    } catch (err) {
+      setStatus(`ERROR: ${err.message}`, 'danger');
+    }
   }
 
   /**
@@ -410,6 +662,7 @@
     // Clear All (requires double-click confirmation)
     clearAllBtn.addEventListener('click', resetApp);
     togglePassBtn.addEventListener('click', togglePasswordVisibility);
+    generatePassBtn.addEventListener('click', handleGeneratePassphrase);
     passEl.addEventListener('input', debounce(updatePasswordStrength, DEBOUNCE_DELAY));
 
     // Character count on textarea input
@@ -418,6 +671,12 @@
 
     // Modal buttons and overlay
     resultCopyBtn.addEventListener('click', copyResultToClipboard);
+    resultLinkBtn.addEventListener('click', copyShareLink);
+    resultQrBtn.addEventListener('click', () => {
+      if (resultQrWrap.hidden) showQrCode();
+      else hideQrCode();
+    });
+    resultReplyBtn.addEventListener('click', replyWithDecrypted);
     resultDoneBtn.addEventListener('click', hideResult);
     resultOverlay.addEventListener('click', (e) => {
       if (e.target === resultOverlay) hideResult();
@@ -435,6 +694,9 @@
 
     // Keyboard shortcuts
     document.addEventListener('keydown', handleKeyboard);
+
+    // On load: if the page was opened via a #d=... share link, consume it.
+    consumeShareFragment();
   }
 
   /**

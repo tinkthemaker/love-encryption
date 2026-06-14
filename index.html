@@ -36,12 +36,13 @@
         </svg>
       </div>
       <h1>Cipher</h1>
-      <span class="version">v2.1</span>
+      <span class="version">v3</span>
     </header>
 
     <section class="settings">
       <div class="settings-header">
         <label for="pass" class="settings-title">Passphrase</label>
+        <p class="settings-subtitle">The secret you and B will both type. Never text it with the message.</p>
       </div>
       <div class="settings-content">
         <div class="form-group">
@@ -58,7 +59,10 @@
           </button>
           <div id="strength" role="meter" aria-label="Password strength" aria-valuetext=""></div>
         </div>
-        <button id="clearAllBtn" class="btn btn-subtle" type="button">Clear All</button>
+        <div class="passphrase-actions">
+          <button id="generatePassBtn" class="btn btn-subtle" type="button" aria-label="Generate a random passphrase">Generate</button>
+          <button id="clearAllBtn" class="btn btn-subtle" type="button">Clear All</button>
+        </div>
       </div>
     </section>
 
@@ -100,17 +104,27 @@
     <div class="result-card">
       <h2 id="resultTitle"></h2>
       <textarea id="resultContent" readonly aria-label="Result content"></textarea>
+      <div id="resultQrWrap" class="result-qr-wrap" hidden>
+        <canvas id="resultQrCanvas" aria-label="QR code for the share link"></canvas>
+        <p class="result-qr-caption">Scan with B's phone</p>
+      </div>
+      <p id="resultHint" class="result-hint" hidden></p>
       <div class="result-footer">
         <div class="result-actions">
           <button id="resultCopyBtn" class="btn primary" type="button">Copy</button>
+          <button id="resultLinkBtn" class="btn" type="button" hidden>Link</button>
+          <button id="resultQrBtn" class="btn share-btn" type="button" hidden>QR</button>
           <button id="resultShareBtn" class="btn share-btn" type="button">Share</button>
         </div>
+        <button id="resultReplyBtn" class="btn btn-close" type="button" hidden>Reply</button>
         <button id="resultDoneBtn" class="btn btn-close" type="button">Close</button>
       </div>
     </div>
   </div>
 
   <script src="crypto.js"></script>
+  <script src="qrcode.js"></script>
+  <script src="wordlist.js"></script>
   <script src="app.js" defer></script>
 </body>
 </html>

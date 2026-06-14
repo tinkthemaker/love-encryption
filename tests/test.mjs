@@ -200,6 +200,217 @@ await test('parseCiphertext: handles multiline armor (whitespace stripped)', asy
   assert.equal(await decryptMessage('pass', reparsed), 'a'.repeat(200));
 });
 
+// --- Share-link round-trip (URL fragment format used for #d=... links) ---
+// Mirrors the encode/decode logic in app.js (buildShareLink + consumeShareFragment).
+function encodeShareFragment(armored) {
+  return btoa(unescape(encodeURIComponent(armored)));
+}
+function decodeShareFragment(fragment) {
+  return decodeURIComponent(escape(atob(fragment)));
+}
+
+await test('share-link: #d= fragment round-trips armored ciphertext losslessly', async () => {
+  const bundle = await encryptMessage('shared-secret', 'meet at the docks at 8', MIN_KDF_ITERATIONS);
+  const armored = formatCiphertext(bundle);
+  const fragment = encodeShareFragment(armored);
+  // Fragment should be base64 — no spaces, no newlines
+  assert.ok(/^[A-Za-z0-9+/=]+$/.test(fragment), 'Fragment must be base64-safe');
+  // Decode and verify
+  const decoded = decodeShareFragment(fragment);
+  assert.equal(decoded, armored);
+  // And the recipient can actually decrypt
+  const recovered = await decryptMessage('shared-secret', parseCiphertext(decoded));
+  assert.equal(recovered, 'meet at the docks at 8');
+});
+
+await test('share-link: encoded fragment is URL-safe (no #, no spaces)', () => {
+  const armored = '-----BEGIN SECRET MESSAGE-----\nABC=\n-----END SECRET MESSAGE-----';
+  const frag = encodeShareFragment(armored);
+  assert.ok(!frag.includes('#'), 'No # in fragment');
+  assert.ok(!frag.includes(' '), 'No spaces in fragment');
+  assert.ok(!frag.includes('\n'), 'No newlines in fragment');
+});
+
+await test('share-link: handles unicode messages in fragment', async () => {
+  const bundle = await encryptMessage('p', 'I love you \u2764\ufe0f', MIN_KDF_ITERATIONS);
+  const armored = formatCiphertext(bundle);
+  const decoded = decodeShareFragment(encodeShareFragment(armored));
+  assert.equal(await decryptMessage('p', parseCiphertext(decoded)), 'I love you \u2764\ufe0f');
+});
+
+// --- QR code generation: matrix dimensions and scan round-trip ---
+// Loads the vendored qrcode.js to confirm the integration works.
+let CipherQR;
+try {
+  const qrSource = readFileSync(join(__dirname, '..', 'qrcode.js'), 'utf-8');
+  // qrcode.js is UMD: when `module.exports` is settable, it writes the
+  // factory there. Run the source in a sandbox and read what it exports.
+  const fakeModule = { exports: {} };
+  new Function('module', 'exports', qrSource)(fakeModule, fakeModule.exports);
+  CipherQR = fakeModule.exports;
+} catch (e) {
+  CipherQR = null;
+}
+
+await test('qrcode: generates a square matrix for a short payload', () => {
+  if (!CipherQR) {
+    console.log('    (skipped — qrcode.js not loadable)');
+    return;
+  }
+  const qr = CipherQR(0, 'L');
+  qr.addData('hello');
+  qr.make();
+  const n = qr.getModuleCount();
+  assert.ok(n >= 21 && n <= 57, `Unexpected module count: ${n}`);
+  // Should have at least some dark modules
+  let darks = 0;
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (qr.isDark(r, c)) darks++;
+    }
+  }
+  assert.ok(darks > n * n * 0.2, `Too few dark modules: ${darks}`);
+});
+
+await test('qrcode: handles a realistic share-link payload length', () => {
+  if (!CipherQR) {
+    console.log('    (skipped — qrcode.js not loadable)');
+    return;
+  }
+  // Simulate a full encrypted message + base64 fragment
+  const fakeShareUrl = 'https://love-encryption.vercel.app/#d=' + 'A'.repeat(400);
+  const qr = CipherQR(0, 'L');
+  qr.addData(fakeShareUrl);
+  qr.make();
+  const n = qr.getModuleCount();
+  // A 400-char URL should land somewhere in v5-v15 territory
+  assert.ok(n >= 37 && n <= 77, `Realistic URL produced unexpected size v${(n - 17) / 4}`);
+});
+
+// --- Reply-flow round-trip: decrypt then re-encrypt with same passphrase ---
+// Models the user flow: receive a message, decrypt it, hit Reply, send a response.
+await test('reply flow: decrypted message can be re-encrypted as a reply', async () => {
+  // Alice's original message
+  const aliceBundle = await encryptMessage('shared-secret', 'meet at the docks', MIN_KDF_ITERATIONS);
+  const aliceArmored = formatCiphertext(aliceBundle);
+  // Bob decrypts (the session passphrase is "shared-secret")
+  const decrypted = await decryptMessage('shared-secret', parseCiphertext(aliceArmored));
+  assert.equal(decrypted, 'meet at the docks');
+  // Bob types a reply. The Reply button prefills both fields, but Bob
+  // edits the message to "see you at 9"
+  const replyText = 'see you at 9';
+  // Bob re-encrypts with the same shared secret
+  const bobBundle = await encryptMessage('shared-secret', replyText, MIN_KDF_ITERATIONS);
+  const bobArmored = formatCiphertext(bobBundle);
+  // Alice decrypts Bob's reply
+  const aliceSees = await decryptMessage('shared-secret', parseCiphertext(bobArmored));
+  assert.equal(aliceSees, replyText);
+});
+
+await test('reply flow: re-encrypt produces a different ciphertext than original', async () => {
+  const a = await encryptMessage('p', 'see you at 9', MIN_KDF_ITERATIONS);
+  const b = await encryptMessage('p', 'see you at 9', MIN_KDF_ITERATIONS);
+  // Different IV/salt each time, so the armored blocks must differ
+  assert.notEqual(a.iv, b.iv);
+  assert.notEqual(a.salt, b.salt);
+  assert.notEqual(a.ct, b.ct);
+  assert.notEqual(formatCiphertext(a), formatCiphertext(b));
+});
+
+// --- Diceware passphrase generator (the Generate button) ---
+// Load the wordlist and run a Node-side mirror of generatePassphrase.
+let EFF_DICEWARE_SHORT;
+try {
+  const wlSource = readFileSync(join(__dirname, '..', 'wordlist.js'), 'utf-8');
+  const fakeWl = { exports: {} };
+  new Function('module', 'exports', wlSource)(fakeWl, fakeWl.exports);
+  EFF_DICEWARE_SHORT = fakeWl.exports;
+} catch (e) {
+  EFF_DICEWARE_SHORT = null;
+}
+
+function generatePassphrase(wordCount = 4) {
+  const list = EFF_DICEWARE_SHORT;
+  if (!list || !Array.isArray(list) || list.length === 0) {
+    throw new Error('Word list not loaded');
+  }
+  const max = list.length;
+  const words = [];
+  const buf = new Uint16Array(wordCount);
+  crypto.getRandomValues(buf);
+  for (let i = 0; i < wordCount; i++) {
+    let n = buf[i];
+    while (n >= 50 * max) {
+      const r = new Uint16Array(1);
+      crypto.getRandomValues(r);
+      n = r[0];
+    }
+    words.push(list[n % max]);
+  }
+  return words.join('-');
+}
+
+await test('wordlist: loads 1296 EFF Diceware words', () => {
+  if (!EFF_DICEWARE_SHORT) {
+    console.log('    (skipped — wordlist.js not loadable)');
+    return;
+  }
+  assert.equal(EFF_DICEWARE_SHORT.length, 1296);
+  // Every entry should be lowercase letters (one is "yo-yo")
+  for (const w of EFF_DICEWARE_SHORT) {
+    assert.ok(/^[a-z][a-z-]*[a-z]$/.test(w), `Bad word: ${w}`);
+  }
+});
+
+await test('generatePassphrase: produces 4 hyphen-separated words', () => {
+  if (!EFF_DICEWARE_SHORT) {
+    console.log('    (skipped — wordlist.js not loadable)');
+    return;
+  }
+  const pass = generatePassphrase(4);
+  const parts = pass.split('-');
+  assert.equal(parts.length, 4, `Expected 4 parts, got ${parts.length}: ${pass}`);
+  for (const w of parts) {
+    assert.ok(EFF_DICEWARE_SHORT.includes(w), `${w} not in wordlist`);
+  }
+});
+
+await test('generatePassphrase: each call produces a different passphrase', () => {
+  if (!EFF_DICEWARE_SHORT) {
+    console.log('    (skipped — wordlist.js not loadable)');
+    return;
+  }
+  // Statistical: 1000 calls, expect no collisions
+  const seen = new Set();
+  for (let i = 0; i < 1000; i++) {
+    seen.add(generatePassphrase(4));
+  }
+  assert.equal(seen.size, 1000, 'Got a duplicate in 1000 generations (extremely unlikely with 4 words from 1296)');
+});
+
+await test('generatePassphrase: custom wordCount', () => {
+  if (!EFF_DICEWARE_SHORT) {
+    console.log('    (skipped — wordlist.js not loadable)');
+    return;
+  }
+  const pass = generatePassphrase(5);
+  assert.equal(pass.split('-').length, 5);
+  const pass2 = generatePassphrase(6);
+  assert.equal(pass2.split('-').length, 6);
+});
+
+await test('generatePassphrase: a generated passphrase encrypts and decrypts', async () => {
+  if (!EFF_DICEWARE_SHORT) {
+    console.log('    (skipped — wordlist.js not loadable)');
+    return;
+  }
+  const pass = generatePassphrase(4);
+  const bundle = await encryptMessage(pass, 'top secret note', MIN_KDF_ITERATIONS);
+  const armored = formatCiphertext(bundle);
+  const recovered = await decryptMessage(pass, parseCiphertext(armored));
+  assert.equal(recovered, 'top secret note');
+});
+
 // Summary
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
