@@ -217,9 +217,7 @@
    */
   function showQrCode() {
     const url = buildShareLink();
-    console.log('[QR] showQrCode called, url length:', url?.length);
     if (!url || typeof window.qrcode !== 'function') {
-      console.log('[QR] bailing: url=', !!url, 'qrcode type=', typeof window.qrcode);
       setStatus('QR code generation unavailable', 'danger');
       return;
     }
@@ -228,32 +226,39 @@
       qr.addData(url);
       qr.make();
       const moduleCount = qr.getModuleCount();
-      const size = 240;
-      const cellSize = Math.floor(size / moduleCount);
-      const actualSize = cellSize * moduleCount;
-      console.log('[QR] moduleCount=', moduleCount, 'cellSize=', cellSize, 'actualSize=', actualSize);
+      // Spec requires a 4-module white quiet zone around the QR; most
+      // scanners (and decoders like OpenCV) won't find the finder
+      // patterns without it. Render the quiet zone as part of the canvas.
+      const quietModules = 4;
+      const targetTotal = 256; // aim for ~256px output, with 4-module border
+      const qrPx = targetTotal - 2 * quietModules;
+      const cellSize = Math.max(1, Math.floor(qrPx / moduleCount));
+      const qrActual = cellSize * moduleCount;
+      const actualSize = qrActual + 2 * quietModules * cellSize;
       resultQrCanvas.width = actualSize;
       resultQrCanvas.height = actualSize;
       const ctx = resultQrCanvas.getContext('2d');
+      // Fill the entire canvas white — this provides the quiet zone
+      // around the QR data area.
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, actualSize, actualSize);
       ctx.fillStyle = '#000000';
-      let darks = 0;
+      const offset = quietModules * cellSize;
       for (let r = 0; r < moduleCount; r++) {
         for (let c = 0; c < moduleCount; c++) {
           if (qr.isDark(r, c)) {
-            ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
-            darks++;
+            ctx.fillRect(
+              offset + c * cellSize,
+              offset + r * cellSize,
+              cellSize,
+              cellSize,
+            );
           }
         }
       }
-      console.log('[QR] drew', darks, 'dark modules');
-      const px = ctx.getImageData(0, 0, 1, 1).data;
-      console.log('[QR] top-left pixel after draw:', px[0], px[1], px[2], px[3]);
       resultContentEl.hidden = true;
       resultQrWrap.hidden = false;
     } catch (err) {
-      console.log('[QR] error:', err.message);
       setStatus(`ERROR: ${err.message}`, 'danger');
     }
   }
