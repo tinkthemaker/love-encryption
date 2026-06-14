@@ -1,5 +1,7 @@
 // Service Worker for CIPHER - Secure Message Encryption App
-const CACHE_NAME = 'cipher-v3';
+// version.js exposes APP_VERSION and CACHE_NAME; bump APP_VERSION there
+// to force a cache invalidation on next deploy.
+importScripts('./version.js');
 
 // Core app shell files needed for offline functionality
 const APP_SHELL = [
@@ -8,14 +10,15 @@ const APP_SHELL = [
   './style.css',
   './app.js',
   './crypto.js',
-  './qrcode.js',
-  './wordlist.js',
+  './version.js',
+  './vendor/qrcode.js',
+  './vendor/wordlist.js',
   './heart-192.png',
   './heart-512.png'
 ];
 
 // Files that should always be fetched fresh when online
-const NETWORK_FIRST = ['./app.js', './crypto.js', './qrcode.js', './wordlist.js', './style.css', './index.html'];
+const NETWORK_FIRST = ['./app.js', './crypto.js', './version.js', './vendor/qrcode.js', './vendor/wordlist.js', './style.css', './index.html'];
 
 /**
  * Install event: Cache the app shell files.

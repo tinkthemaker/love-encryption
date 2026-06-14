@@ -1,0 +1,28 @@
+{
+  "name": "love-encryption",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Secure client-side message encryption using AES-256-GCM.",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/test.mjs",
+    "serve": "python -m http.server 8000"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "encryption",
+    "aes-gcm",
+    "pwa",
+    "privacy",
+    "client-side",
+    "webcrypto"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tinkthemaker/love-encryption.git"
+  },
+  "homepage": "https://love-encryption.vercel.app"
+}

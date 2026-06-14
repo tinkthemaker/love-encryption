@@ -3,9 +3,20 @@
  * Core cryptographic primitives used by both app.js and the test suite.
  * Any change to encryption parameters or algorithms MUST be made here
  * so that tests and the app stay in sync.
+ *
+ * Wrapped in an IIFE so internal `const` bindings (APP_VERSION,
+ * KDF_ITERATIONS, etc.) don't leak into the script's shared global
+ * lexical environment, where they would collide with other
+ * <script>-loaded files like version.js.
  */
+(() => {
 
-const APP_VERSION = 2;
+// APP_VERSION is sourced from version.js (loaded before this file in
+// index.html and in the test runner). The fallback guards against
+// version.js failing to load — the bundled `v` field is for future
+// compatibility and not used by decrypt, so a stale value is harmless.
+const APP_VERSION =
+  (typeof globalThis !== 'undefined' && globalThis.CIPHER_VERSION && globalThis.CIPHER_VERSION.APP_VERSION) || 1;
 const KDF_ITERATIONS = 310000;
 const MIN_KDF_ITERATIONS = 100000;
 const DEBOUNCE_DELAY = 150;
@@ -151,3 +162,5 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = CipherCrypto;
 }
+
+})();

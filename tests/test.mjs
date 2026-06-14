@@ -11,6 +11,11 @@ import { dirname, join } from 'node:path';
 
 // Load and evaluate crypto.js (shared IIFE that assigns to globalThis in Node)
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// version.js must be evaluated BEFORE crypto.js so that globalThis.CIPHER_VERSION
+// is populated for crypto.js to read APP_VERSION from.
+const versionSource = readFileSync(join(__dirname, '..', 'version.js'), 'utf-8');
+new Function(versionSource)();
+
 const cryptoSource = readFileSync(join(__dirname, '..', 'crypto.js'), 'utf-8');
 
 // crypto.js uses module.exports for Node — eval it to get the exports
@@ -242,7 +247,7 @@ await test('share-link: handles unicode messages in fragment', async () => {
 // Loads the vendored qrcode.js to confirm the integration works.
 let CipherQR;
 try {
-  const qrSource = readFileSync(join(__dirname, '..', 'qrcode.js'), 'utf-8');
+  const qrSource = readFileSync(join(__dirname, '..', 'vendor', 'qrcode.js'), 'utf-8');
   // qrcode.js is UMD: when `module.exports` is settable, it writes the
   // factory there. Run the source in a sandbox and read what it exports.
   const fakeModule = { exports: {} };
@@ -321,7 +326,7 @@ await test('reply flow: re-encrypt produces a different ciphertext than original
 // Load the wordlist and run a Node-side mirror of generatePassphrase.
 let EFF_DICEWARE_SHORT;
 try {
-  const wlSource = readFileSync(join(__dirname, '..', 'wordlist.js'), 'utf-8');
+  const wlSource = readFileSync(join(__dirname, '..', 'vendor', 'wordlist.js'), 'utf-8');
   const fakeWl = { exports: {} };
   new Function('module', 'exports', wlSource)(fakeWl, fakeWl.exports);
   EFF_DICEWARE_SHORT = fakeWl.exports;
@@ -409,6 +414,24 @@ await test('generatePassphrase: a generated passphrase encrypts and decrypts', a
   const armored = formatCiphertext(bundle);
   const recovered = await decryptMessage(pass, parseCiphertext(armored));
   assert.equal(recovered, 'top secret note');
+});
+
+// --- QR button visibility (regression guard for share-btn class bleed) ---
+// Background: the QR button previously had class="btn share-btn", which
+// caused the CSS rule `.no-share-api .share-btn { display: none }` to hide
+// it in any browser that lacks navigator.share (e.g. some embedded
+// WebViews, headless test environments). The fix is to drop the share-btn
+// class from the QR button — it should always be visible when shown.
+const indexHtml = readFileSync(join(__dirname, '..', 'index.html'), 'utf-8');
+await test('QR button does not have share-btn class (visible regardless of Web Share API)', () => {
+  const m = indexHtml.match(/<button id="resultQrBtn"([^>]*)>/);
+  assert.ok(m, 'QR button should exist in index.html');
+  assert.ok(!m[1].includes('share-btn'), 'QR button must not have share-btn class (would be hidden in browsers without navigator.share)');
+});
+await test('Share button retains share-btn class (hidden only when navigator.share is unavailable)', () => {
+  const m = indexHtml.match(/<button id="resultShareBtn"([^>]*)>/);
+  assert.ok(m, 'Share button should exist in index.html');
+  assert.ok(m[1].includes('share-btn'), 'Share button must keep share-btn class so the .no-share-api CSS rule hides it correctly');
 });
 
 // Summary
