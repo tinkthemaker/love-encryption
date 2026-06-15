@@ -23,6 +23,7 @@
   const clearAllBtn = $('#clearAllBtn');
   const togglePassBtn = $('#togglePassBtn');
   const generatePassBtn = $('#generatePassBtn');
+  const selfTestBtn = $('#selfTestBtn');
   const resultCopyBtn = $('#resultCopyBtn');
   const resultLinkBtn = $('#resultLinkBtn');
   const resultQrBtn = $('#resultQrBtn');
@@ -607,6 +608,33 @@
   }
 
   /**
+   * Runs an in-app self-test: encrypts and decrypts a known plaintext,
+   * verifies the round-trip, and reports the KDF timing. Builds user
+   * confidence that the browser's WebCrypto implementation is working.
+   */
+  async function runSelfTest() {
+    const TEST_PASSPHRASE = 'cipher-self-test-' + Date.now();
+    const TEST_PLAINTEXT = 'CIPHER self-test vector \u2728';
+    try {
+      setProcessing(true);
+      setStatus('Self-test running\u2026');
+      const t0 = performance.now();
+      const bundle = await encryptMessage(TEST_PASSPHRASE, TEST_PLAINTEXT);
+      const recovered = await decryptMessage(TEST_PASSPHRASE, bundle);
+      const elapsed = Math.round(performance.now() - t0);
+      if (recovered === TEST_PLAINTEXT) {
+        setStatus(`Self-test passed (KDF took ${elapsed}ms)`, 'muted');
+      } else {
+        setStatus('Self-test FAILED: decrypted text does not match', 'danger');
+      }
+    } catch (err) {
+      setStatus(`Self-test FAILED: ${err.message}`, 'danger');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  /**
    * Copies the content of the result modal to the clipboard.
    */
   async function copyResultToClipboard() {
@@ -668,6 +696,7 @@
     clearAllBtn.addEventListener('click', resetApp);
     togglePassBtn.addEventListener('click', togglePasswordVisibility);
     generatePassBtn.addEventListener('click', handleGeneratePassphrase);
+    if (selfTestBtn) selfTestBtn.addEventListener('click', runSelfTest);
     passEl.addEventListener('input', debounce(updatePasswordStrength, DEBOUNCE_DELAY));
 
     // Character count on textarea input

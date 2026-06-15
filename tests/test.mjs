@@ -17,6 +17,9 @@ const versionSource = readFileSync(join(__dirname, '..', 'version.js'), 'utf-8')
 new Function(versionSource)();
 
 const cryptoSource = readFileSync(join(__dirname, '..', 'crypto.js'), 'utf-8');
+// index.html is read here so it's available to all later tests (not
+// just the ones that happen to come after its old late declaration).
+const indexHtml = readFileSync(join(__dirname, '..', 'index.html'), 'utf-8');
 
 // crypto.js uses module.exports for Node — eval it to get the exports
 const cryptoModule = {};
@@ -416,13 +419,29 @@ await test('generatePassphrase: a generated passphrase encrypts and decrypts', a
   assert.equal(recovered, 'top secret note');
 });
 
+// --- In-app self-test logic (the same encrypt/decrypt pair the button runs) ---
+// The self-test button (T3.1) does: encryptMessage(uniquePass, fixedVector)
+// then decryptMessage(uniquePass, bundle) and reports KDF timing. This
+// test mirrors that path at MIN_KDF_ITERATIONS so it's fast.
+await test('self-test: known vector round-trips through encrypt + decrypt', async () => {
+  const TEST_PASSPHRASE = 'self-test-pass';
+  const TEST_PLAINTEXT = 'CIPHER self-test vector \u2728';
+  const bundle = await encryptMessage(TEST_PASSPHRASE, TEST_PLAINTEXT, MIN_KDF_ITERATIONS);
+  const recovered = await decryptMessage(TEST_PASSPHRASE, bundle);
+  assert.equal(recovered, TEST_PLAINTEXT);
+});
+
+await test('self-test: index.html has #selfTestBtn in the footer with footer-link class', () => {
+  assert.ok(/<button\s+id="selfTestBtn"\s+class="footer-link"/.test(indexHtml),
+    'index.html should have <button id="selfTestBtn" class="footer-link">');
+});
+
 // --- QR button visibility (regression guard for share-btn class bleed) ---
 // Background: the QR button previously had class="btn share-btn", which
 // caused the CSS rule `.no-share-api .share-btn { display: none }` to hide
 // it in any browser that lacks navigator.share (e.g. some embedded
 // WebViews, headless test environments). The fix is to drop the share-btn
 // class from the QR button — it should always be visible when shown.
-const indexHtml = readFileSync(join(__dirname, '..', 'index.html'), 'utf-8');
 await test('QR button does not have share-btn class (visible regardless of Web Share API)', () => {
   const m = indexHtml.match(/<button id="resultQrBtn"([^>]*)>/);
   assert.ok(m, 'QR button should exist in index.html');
@@ -481,6 +500,38 @@ await test('index.html declares both apple-mobile-web-app-capable and mobile-web
     'apple-mobile-web-app-capable meta tag should be present');
   assert.ok(/<meta\s+name="mobile-web-app-capable"/.test(indexHtml),
     'mobile-web-app-capable meta tag should be present');
+});
+
+// --- parseCiphertext: additional edge cases (T3.2) ---
+await test('parseCiphertext: rejects iters === 0', () => {
+  const bad = btoa(JSON.stringify({ iv: 'a', salt: 'b', ct: 'c', iters: 0 }));
+  assert.throws(
+    () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
+    /Invalid iteration count/,
+  );
+});
+
+await test('parseCiphertext: rejects string iters (no implicit coercion)', () => {
+  const bad = btoa(JSON.stringify({ iv: 'a', salt: 'b', ct: 'c', iters: '310000' }));
+  assert.throws(
+    () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
+  );
+});
+
+await test('parseCiphertext: rejects whitespace-only content between headers', () => {
+  // \n\n between markers should be stripped to empty and caught
+  assert.throws(
+    () => parseCiphertext('-----BEGIN SECRET MESSAGE-----\n\n\n-----END SECRET MESSAGE-----'),
+    /Empty message content/,
+  );
+});
+
+await test('parseCiphertext: rejects base64 with invalid characters (not just atob generic error)', () => {
+  // ! is not valid base64; atob throws InvalidCharacterError. The wrapper
+  // currently re-throws without a specific message.
+  assert.throws(
+    () => parseCiphertext('-----BEGIN SECRET MESSAGE-----\n!!!@@@###\n-----END SECRET MESSAGE-----'),
+  );
 });
 
 // Summary

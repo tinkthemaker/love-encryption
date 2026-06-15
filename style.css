@@ -829,6 +829,24 @@ textarea:focus::placeholder {
     text-align: center;
 }
 
+.footer-link {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+    padding: 4px 8px;
+    margin-top: 6px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+.footer-link:hover {
+    color: var(--text);
+}
+
 .footer-line {
     width: 48px;
     height: 1px;
