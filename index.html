@@ -106,15 +106,15 @@
       <textarea id="resultContent" readonly aria-label="Result content"></textarea>
       <div id="resultQrWrap" class="result-qr-wrap" hidden>
         <canvas id="resultQrCanvas" aria-label="QR code for the share link"></canvas>
-        <p class="result-qr-caption">Scan with B's phone</p>
+        <p class="result-qr-caption">In person: have B scan this with their phone</p>
       </div>
       <p id="resultHint" class="result-hint" hidden></p>
       <div class="result-footer">
         <div class="result-actions">
           <button id="resultCopyBtn" class="btn primary" type="button">Copy</button>
           <button id="resultLinkBtn" class="btn" type="button" hidden>Link</button>
-          <button id="resultQrBtn" class="btn" type="button" hidden>QR</button>
           <button id="resultShareBtn" class="btn share-btn" type="button">Share</button>
+          <button id="resultQrBtn" class="btn qr-btn" type="button" hidden>QR (in person)</button>
         </div>
         <button id="resultReplyBtn" class="btn btn-close" type="button" hidden>Reply</button>
         <button id="resultDoneBtn" class="btn btn-close" type="button">Close</button>

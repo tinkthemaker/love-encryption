@@ -30,12 +30,14 @@ test fails or a check is wrong, the item is not done.
 - **Crypto:** AES-256-GCM, PBKDF2-SHA256 @ 310k iters, 16-byte salt, 12-byte IV,
   minimum 100k iters enforced on decrypt.
 - **UI:** encrypt/decrypt tabs, passphrase strength meter, diceware generator,
-  result modal with Copy/Link/QR/Share/Reply buttons, `#d=...` URL fragment
-  load, auto-clear plaintext, friendlier error copy, auto-suggest.
+  result modal with **Copy / Link / Share / QR (in person)** buttons in that
+  order (armored block is the primary share path, QR is the visually
+  de-emphasized in-person handoff option), `#d=...` URL fragment load,
+  auto-clear plaintext, friendlier error copy, auto-suggest.
 - **PWA:** service worker with stale-while-revalidate, manifest, two heart icons.
-- **Vendored libs:** `qrcode.js` (MIT, kazuhikoarase), `wordlist.js` (EFF
-  Diceware short, CC BY 3.0).
-- **Tests:** 35/35 passing in `node tests/test.mjs` (Node 18+).
+- **Vendored libs:** `vendor/qrcode.js` (MIT, kazuhikoarase),
+  `vendor/wordlist.js` (EFF Diceware short, CC BY 3.0).
+- **Tests:** 41/41 passing in `node tests/test.mjs` (Node 18+).
 
 ---
 
@@ -537,7 +539,7 @@ SECURITY.md, has badges for CI status and license.
   - Add badges block at the top of the file (after line 8 `Inspired by...`):
 
 ```markdown
-[![Tests](https://img.shields.io/badge/tests-40%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-41%20passing-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-installable-purple)]()
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-success)]()
@@ -545,7 +547,7 @@ SECURITY.md, has badges for CI status and license.
 
   - In the "Features" section (around line 11-20), add these bullet
     points:
-    - **QR code share** — Show B the QR in person, no copy-paste needed
+    - **Three share paths** — The Copy button (armored block) is the primary path, works in any messenger. Link gives B a one-tap URL. Share uses the system share sheet. QR is reserved for in-person handoff.
     - **One-tap reply** — Decrypted result has a Reply button that prefills the message and passphrase
     - **Diceware passphrase generator** — One click, four random words from the EFF short wordlist (~41 bits of entropy)
     - **Sharable `#d=...` links** — Recipient opens the link, ciphertext preloads into the decrypt tab
@@ -558,13 +560,18 @@ SECURITY.md, has badges for CI status and license.
 
 1. After decrypting a message, tap **Reply** at the bottom of the result.
 2. The encrypt tab opens with the message body prefilled and the passphrase remembered for the session.
-3. Edit your reply and tap **Encrypt** — then send via Copy, Link, or QR.
+3. Edit your reply and tap **Encrypt** — then send via **Copy** (the recommended path, works in any messenger) or **Link** (a one-tap URL for B).
 
-### Share via QR
+### Sharing
 
-When you encrypt, the result modal has a **QR** button. Tap it to render
-a QR code you can show B in person — they scan, the app opens to the
-decrypt tab with your ciphertext already loaded.
+When you encrypt, the result modal offers four ways to get the message to B:
+
+- **Copy** (recommended) — copies the armored block to your clipboard. Works in any messenger: Signal, iMessage, WhatsApp, Discord, email, SMS. The block is plain text with a `-----BEGIN/END-----` header, so it's safely pasted anywhere.
+- **Link** — copies a `https://...#d=...` URL. B opens the link, the ciphertext preloads into their decrypt tab, they just type the passphrase. One-tap open in messengers that auto-linkify, but the URL itself can show up in link previews, so use Copy for the most privacy-sensitive cases.
+- **Share** — uses the system share sheet (Signal, Mail, AirDrop, etc.). Equivalent to Copy + paste into a chat.
+- **QR (in person)** — generates a QR code only useful when you and B are physically together. B scans with their phone, the app opens to the decrypt tab. Don't try to share the QR digitally — scanning your own screen is not a real workflow.
+
+For all four paths, share the passphrase with B through a *different* channel (a phone call, in person, a separate message) — never text it in the same message as the ciphertext.
 ```
 
   - In the "Running Locally" section (around line 66-85), update line 74
@@ -598,12 +605,54 @@ See [SECURITY.md](SECURITY.md) for how to report vulnerabilities privately.
 **Acceptance criteria:**
 - [ ] `README.md` has a badges block near the top
 - [ ] README mentions QR code, Reply, diceware, and `#d=...` share
-- [ ] README has a "Reply" subsection and a "Share via QR" subsection
+- [ ] README has a "Reply" subsection and a "Sharing" subsection
+- [ ] README's "Sharing" subsection describes all four share paths (Copy/Link/Share/QR), flags Copy as the recommended path, and notes QR is in-person only
 - [ ] README's "Project Structure" lists all new files
 - [ ] README's "License" section links to `LICENSE` and mentions MIT
 - [ ] README's "Security" section links to `SECURITY.md`
 
 **Tests:** None.
+
+---
+
+### T3.4 · Reframe share UX: armored block primary, link one-tap, QR in-person
+
+**Status: SHIPPED (post-plan addition).** This was a v3 feature
+oversight caught by the user after PR 1 landed: the QR code is only
+useful for in-person handoff (you can't scan your own screen with
+your own phone). The armored block is the universal share path;
+the link is a one-tap URL; the QR is the rare in-person case.
+
+**What changed:**
+- `index.html`: Reordered the four share buttons in the result modal
+  from `Copy | Link | QR | Share` to `Copy | Link | Share | QR`. The
+  QR button is now labeled `QR (in person)` and uses a new `qr-btn`
+  class for visual de-emphasis (smaller, muted color).
+- `index.html`: QR canvas caption changed from "Scan with B's phone"
+  to "In person: have B scan this with their phone".
+- `app.js`: Hint copy under the encrypted result now leads with
+  "The armored block above works in any messenger — paste it into
+  Signal, iMessage, WhatsApp, or email." and explicitly notes
+  "QR is for in-person handoff only."
+- `style.css`: New `.qr-btn` rule for the visually de-emphasized QR
+  button (10px font, 32px min-height, muted gray).
+- `tests/test.mjs`: 4 new regression tests:
+  - button order is exactly `[Copy, Link, Share, QR]`
+  - QR button label includes "in person"
+  - QR canvas caption includes "in person"
+  - QR button has `qr-btn` class
+
+**Files touched:** `index.html`, `app.js`, `style.css`, `tests/test.mjs`.
+
+**Acceptance criteria:**
+- [ ] Button order in the result modal: `Copy`, `Link`, `Share`, `QR` (in that order)
+- [ ] QR button labeled "QR (in person)"
+- [ ] QR canvas caption starts with "In person"
+- [ ] QR button uses `qr-btn` class (visually de-emphasized)
+- [ ] Hint copy on the encrypted result mentions armored block first, link second, QR last
+- [ ] `npm test` → 41/41 passing (4 new regression tests)
+
+**Tests added:** 4 (button order, label, caption, class).
 
 ---
 

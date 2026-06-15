@@ -434,6 +434,44 @@ await test('Share button retains share-btn class (hidden only when navigator.sha
   assert.ok(m[1].includes('share-btn'), 'Share button must keep share-btn class so the .no-share-api CSS rule hides it correctly');
 });
 
+// --- Share button order in the result modal ---
+// The order encodes the recommended share path:
+//   1. Copy    (armored block — primary, works in any messenger)
+//   2. Link    (#d=... URL — one-tap open for B, but auto-linkifies
+//                    in some messengers and exposes the link in previews)
+//   3. Share   (system share sheet — fine, OS-mediated)
+//   4. QR      (in-person handoff only — should be visually last and
+//                    de-emphasized, because B scanning their own screen
+//                    is not a real use case)
+await test('Share button order: Copy, Link, Share, QR (armored block primary, QR in-person only)', () => {
+  const actionDiv = indexHtml.match(/<div class="result-actions">([\s\S]*?)<\/div>/);
+  assert.ok(actionDiv, 'result-actions div should exist in index.html');
+  const ids = [];
+  const btnRe = /<button id="(result\w+?)"/g;
+  let m;
+  while ((m = btnRe.exec(actionDiv[1])) !== null) ids.push(m[1]);
+  assert.deepEqual(ids, ['resultCopyBtn', 'resultLinkBtn', 'resultShareBtn', 'resultQrBtn'],
+    `Expected [Copy, Link, Share, QR] order, got [${ids.join(', ')}]`);
+});
+
+await test('QR button is labeled "QR (in person)" to clarify its scope', () => {
+  const m = indexHtml.match(/<button id="resultQrBtn"([^>]*)>([^<]*)<\/button>/);
+  assert.ok(m, 'QR button should exist in index.html');
+  assert.match(m[2], /in person/i, 'QR button label should mention "in person" to clarify its use case');
+});
+
+await test('QR canvas caption clarifies in-person use', () => {
+  const m = indexHtml.match(/<p class="result-qr-caption">([^<]*)<\/p>/);
+  assert.ok(m, 'QR caption should exist in index.html');
+  assert.match(m[1], /in person/i, 'QR canvas caption should mention "in person"');
+});
+
+await test('QR button has qr-btn class for visual de-emphasis', () => {
+  const m = indexHtml.match(/<button id="resultQrBtn"([^>]*)>/);
+  assert.ok(m, 'QR button should exist in index.html');
+  assert.ok(m[1].includes('qr-btn'), 'QR button should have qr-btn class so it gets the smaller, muted styling');
+});
+
 // Summary
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

@@ -489,7 +489,7 @@
       // Never persisted, cleared on tab close or Clear All.
       sessionPassphrase = pass;
       showResult('encrypted', formattedCiphertext, {
-        hint: 'Paste this in any messenger. <strong>Send the passphrase to B separately</strong> \u2014 in person, on a call, or in a different message. Never text it with the message.',
+        hint: 'The armored block above works in any messenger \u2014 paste it into Signal, iMessage, WhatsApp, or email. <strong>Send the passphrase to B separately</strong> \u2014 in person, on a call, or in a separate message. Never text it with the message. The Link button gives B a one-tap URL. QR is for in-person handoff only.',
       });
       setStatus('ENCRYPTION COMPLETE');
       // Auto-clear the plaintext from the input so it doesn't sit on screen
