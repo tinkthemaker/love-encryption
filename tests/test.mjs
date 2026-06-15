@@ -472,6 +472,17 @@ await test('QR button has qr-btn class for visual de-emphasis', () => {
   assert.ok(m[1].includes('qr-btn'), 'QR button should have qr-btn class so it gets the smaller, muted styling');
 });
 
+// --- mobile-web-app-capable meta tag (T2.2) ---
+// Background: browser console shows a deprecation warning for
+// apple-mobile-web-app-capable. The modern equivalent is
+// mobile-web-app-capable. Both are kept for compatibility.
+await test('index.html declares both apple-mobile-web-app-capable and mobile-web-app-capable meta tags', () => {
+  assert.ok(/<meta\s+name="apple-mobile-web-app-capable"/.test(indexHtml),
+    'apple-mobile-web-app-capable meta tag should be present');
+  assert.ok(/<meta\s+name="mobile-web-app-capable"/.test(indexHtml),
+    'mobile-web-app-capable meta tag should be present');
+});
+
 // Summary
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
