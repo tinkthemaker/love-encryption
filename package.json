@@ -3,10 +3,11 @@
   "version": "3.0.0",
   "private": true,
   "description": "Secure client-side message encryption using AES-256-GCM.",
-  "type": "module",
   "scripts": {
     "test": "node tests/test.mjs",
-    "serve": "python -m http.server 8000"
+    "serve": "python -m http.server 8000",
+    "e2e": "node tests/e2e.js",
+    "e2e:persistent": "CIPHER_E2E_PERSISTENT=1 node tests/persistent-e2e.js"
   },
   "engines": {
     "node": ">=18"
