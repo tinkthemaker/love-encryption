@@ -10,7 +10,7 @@
  * <script>-loaded files).
  */
 (() => {
-  const APP_VERSION = 4; // bumped: moved qrcode.js and wordlist.js to vendor/
+  const APP_VERSION = 5; // bumped: fix service-worker CACHE_NAME = undefined bug (PR 1 regression)
   const CACHE_NAME = `cipher-v${APP_VERSION}`;
 
   // Publish to every common global scope so crypto.js (loaded after us)

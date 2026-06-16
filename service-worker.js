@@ -1,7 +1,14 @@
 // Service Worker for CIPHER - Secure Message Encryption App
 // version.js exposes APP_VERSION and CACHE_NAME; bump APP_VERSION there
 // to force a cache invalidation on next deploy.
+//
+// Note: version.js wraps its declarations in an IIFE so they don't
+// leak into the script's global lexical environment (which would
+// collide with other <script>-loaded files in browser pages). In a
+// service worker the only way to access them is via the published
+// global (self.CIPHER_VERSION), so we read CACHE_NAME from there.
 importScripts('./version.js');
+const CACHE_NAME = self.CIPHER_VERSION.CACHE_NAME;
 
 // Core app shell files needed for offline functionality
 const APP_SHELL = [

@@ -502,6 +502,45 @@ await test('index.html declares both apple-mobile-web-app-capable and mobile-web
     'mobile-web-app-capable meta tag should be present');
 });
 
+// --- Service worker CACHE_NAME resolution (regression guard) ---
+// Background: PR 1 replaced the hardcoded CACHE_NAME in service-worker.js
+// with `importScripts('./version.js')`, intending to read CACHE_NAME from
+// the version.js global. But version.js wraps its const declarations in
+// an IIFE, so CACHE_NAME is NOT a top-level constant in the SW context —
+// it was undefined, causing caches.open() to silently use the string
+// "undefined" as the cache name. Returning visitors hit a white screen
+// because the SW had a broken cache and the activate handler couldn't
+// clean it up.
+//
+// This test simulates what the SW does: importScripts the version.js
+// source, then tries to read CACHE_NAME. The fix is for the SW to read
+// it from self.CIPHER_VERSION (where version.js publishes it) rather
+// than as a bare top-level constant.
+const swSource = readFileSync(join(__dirname, '..', 'service-worker.js'), 'utf-8');
+await test('service-worker.js: CACHE_NAME is sourced from self.CIPHER_VERSION (not a bare const)', () => {
+  // The fix: CACHE_NAME must be derived from self.CIPHER_VERSION
+  assert.match(swSource, /self\.CIPHER_VERSION\.CACHE_NAME/,
+    'service-worker.js should read CACHE_NAME from self.CIPHER_VERSION ' +
+    'after importScripts. A bare `const CACHE_NAME = ...` or relying on a ' +
+    'top-level const from version.js will be undefined because version.js ' +
+    'wraps its declarations in an IIFE.');
+});
+
+await test('service-worker.js: importScripts(version.js) is the first executable statement', () => {
+  // Strip comments and strings to find the first real executable line
+  const stripped = swSource
+    .replace(/\/\*[\s\S]*?\*\//g, '')   // block comments
+    .replace(/\/\/.*$/gm, '');          // line comments
+  const importMatch = stripped.match(/importScripts\([^)]+\)/);
+  assert.ok(importMatch, 'service-worker.js should call importScripts');
+  // The importScripts line must come before any other code that uses
+  // CACHE_NAME (otherwise the SW would have a TDZ violation on first run).
+  const cacheNameMatch = stripped.match(/CACHE_NAME/);
+  assert.ok(cacheNameMatch, 'service-worker.js should reference CACHE_NAME');
+  assert.ok(importMatch.index < cacheNameMatch.index,
+    'importScripts must come before any CACHE_NAME reference');
+});
+
 // --- parseCiphertext: additional edge cases (T3.2) ---
 await test('parseCiphertext: rejects iters === 0', () => {
   const bad = btoa(JSON.stringify({ iv: 'a', salt: 'b', ct: 'c', iters: 0 }));
