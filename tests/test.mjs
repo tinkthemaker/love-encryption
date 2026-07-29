@@ -28,7 +28,7 @@ const moduleFactory = new Function('module', 'exports', 'require', cryptoSource)
 moduleFactory(moduleProxy, cryptoModule, undefined);
 
 const {
-  APP_VERSION, KDF_ITERATIONS, MIN_KDF_ITERATIONS,
+  APP_VERSION, KDF_ITERATIONS, MIN_KDF_ITERATIONS, MAX_KDF_ITERATIONS,
   b64, rand, formatCiphertext, parseCiphertext,
   deriveKey, encryptMessage, decryptMessage,
 } = moduleProxy.exports;
@@ -102,6 +102,23 @@ await test('iteration count at exact minimum is accepted', async () => {
   assert.equal(await decryptMessage('pass', bundle), 'msg');
 });
 
+// A bundle is attacker-controlled input: an absurd iteration count would
+// otherwise block the recipient's main thread for minutes.
+await test('iteration count above maximum is rejected', async () => {
+  const bundle = await encryptMessage('pass', 'msg', MIN_KDF_ITERATIONS);
+  bundle.iters = MAX_KDF_ITERATIONS + 1;
+  await assert.rejects(
+    () => decryptMessage('pass', bundle),
+    /Security parameters above supported range/,
+  );
+});
+
+await test('iteration count at exact maximum is accepted by parseCiphertext', () => {
+  const ok = btoa(JSON.stringify({ iv: 'a', salt: 'b', ct: 'c', iters: MAX_KDF_ITERATIONS }));
+  const parsed = parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${ok}\n-----END SECRET MESSAGE-----`);
+  assert.equal(parsed.iters, MAX_KDF_ITERATIONS);
+});
+
 await test('iteration count defaults to KDF_ITERATIONS when missing', async () => {
   const bundle = await encryptMessage('pass', 'msg', KDF_ITERATIONS);
   delete bundle.iters;
@@ -167,6 +184,22 @@ await test('parseCiphertext: rejects non-finite iters value', () => {
 
 await test('parseCiphertext: rejects negative iters value', () => {
   const bad = btoa(JSON.stringify({ iv: 'a', salt: 'b', ct: 'c', iters: -1 }));
+  assert.throws(
+    () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
+    /Invalid iteration count/,
+  );
+});
+
+await test('parseCiphertext: rejects fractional iters value', () => {
+  const bad = btoa(JSON.stringify({ iv: 'a', salt: 'b', ct: 'c', iters: 310000.5 }));
+  assert.throws(
+    () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
+    /Invalid iteration count/,
+  );
+});
+
+await test('parseCiphertext: rejects iters beyond the safe integer range', () => {
+  const bad = btoa(JSON.stringify({ iv: 'a', salt: 'b', ct: 'c', iters: 1e300 }));
   assert.throws(
     () => parseCiphertext(`-----BEGIN SECRET MESSAGE-----\n${bad}\n-----END SECRET MESSAGE-----`),
     /Invalid iteration count/,

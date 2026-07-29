@@ -24,8 +24,13 @@ const APP_SHELL = [
   './heart-512.png'
 ];
 
-// Files that should always be fetched fresh when online
-const NETWORK_FIRST = ['./app.js', './crypto.js', './version.js', './vendor/qrcode.js', './vendor/wordlist.js', './style.css', './index.html'];
+// Files that should always be revalidated when online, matched on the
+// request pathname so query strings (`/app.js?v=2`) and the bare root
+// navigation are handled too. Suffix matching missed both.
+const NETWORK_FIRST_PATHS = new Set(
+  ['./', './index.html', './style.css', './app.js', './crypto.js', './version.js', './vendor/qrcode.js', './vendor/wordlist.js']
+    .map(file => new URL(file, self.location.href).pathname),
+);
 
 /**
  * Install event: Cache the app shell files.
@@ -75,13 +80,19 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
+  // The Cache API only stores GET responses; anything else must pass through
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   // Only handle same-origin requests
   if (url.origin !== location.origin) {
     return;
   }
 
-  // Use stale-while-revalidate for critical files (HTML, CSS, JS)
-  if (NETWORK_FIRST.some(file => event.request.url.endsWith(file.slice(1)))) {
+  // Use stale-while-revalidate for critical files (HTML, CSS, JS) and for
+  // any navigation, so a returning visitor never gets a stale app shell.
+  if (event.request.mode === 'navigate' || NETWORK_FIRST_PATHS.has(url.pathname)) {
     event.respondWith(staleWhileRevalidate(event.request));
     return;
   }
@@ -107,7 +118,18 @@ async function staleWhileRevalidate(request) {
     })
     .catch(() => null);
 
-  return cachedResponse || fetchPromise;
+  if (cachedResponse) return cachedResponse;
+  // Nothing cached and the network is gone: respondWith(null) would reject
+  // and surface a browser error page, so return an explicit offline response.
+  return (await fetchPromise) || offlineResponse();
+}
+
+/**
+ * Fallback response used when a request can be served from neither the
+ * cache nor the network.
+ */
+function offlineResponse() {
+  return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
 }
 
 /**
@@ -129,6 +151,6 @@ async function cacheFirst(request) {
     return networkResponse;
   } catch (err) {
     console.error('[SW] Fetch failed:', err);
-    return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+    return offlineResponse();
   }
 }
