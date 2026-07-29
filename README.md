@@ -18,7 +18,7 @@ Inspired by Pearl Jam's *Given to Fly*.
 - **Zero-trust privacy** — All cryptography runs in your browser via the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API). No data ever leaves your device.
 - **AES-256-GCM encryption** with PBKDF2-SHA256 key derivation (310,000 iterations).
 - **Unique per message** — Random salt and IV generated for every encryption, so identical messages produce different ciphertext.
-- **Downgrade protection** — Refuses to decrypt messages using fewer than 100,000 PBKDF2 iterations.
+- **Downgrade protection** — Refuses to decrypt messages using fewer than 100,000 PBKDF2 iterations, and caps them at 5,000,000 so a hostile message can't freeze your device.
 - **Installable PWA** — Add to your home screen for a native app experience.
 - **Works offline** — Service worker caches everything; no internet needed after first load.
 - **Passphrase strength meter** — Visual feedback on passphrase quality.
@@ -145,6 +145,7 @@ IMPROVEMENTS.md          Implementation plan and audit history
 | Key Derivation | PBKDF2-SHA256 |
 | Iterations | 310,000 |
 | Min Iterations (decrypt) | 100,000 |
+| Max Iterations (decrypt) | 5,000,000 |
 | Salt | 16 random bytes per message |
 | IV | 12 random bytes per message |
 

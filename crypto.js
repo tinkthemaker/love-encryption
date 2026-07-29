@@ -19,6 +19,10 @@ const APP_VERSION =
   (typeof globalThis !== 'undefined' && globalThis.CIPHER_VERSION && globalThis.CIPHER_VERSION.APP_VERSION) || 1;
 const KDF_ITERATIONS = 310000;
 const MIN_KDF_ITERATIONS = 100000;
+// Ceiling on the iteration count a received message may request. Without
+// it, a hostile bundle claiming billions of iterations blocks the main
+// thread for minutes with no way to cancel.
+const MAX_KDF_ITERATIONS = 5000000;
 const DEBOUNCE_DELAY = 150;
 
 const enc = new TextEncoder();
@@ -83,7 +87,7 @@ function parseCiphertext(armoredText) {
       typeof bundle.ct !== 'string' || !bundle.ct) {
     throw new Error('Missing required encryption data');
   }
-  if (bundle.iters !== undefined && (typeof bundle.iters !== 'number' || bundle.iters <= 0 || !Number.isFinite(bundle.iters))) {
+  if (bundle.iters !== undefined && (!Number.isSafeInteger(bundle.iters) || bundle.iters <= 0)) {
     throw new Error('Invalid iteration count in message');
   }
   return bundle;
@@ -134,7 +138,7 @@ async function encryptMessage(pass, plaintext, iterations = KDF_ITERATIONS) {
  * @param {string} pass The user's password.
  * @param {object} bundle The encrypted data bundle.
  * @returns {Promise<string>} The decrypted plaintext message.
- * @throws {Error} If iterations count is below minimum threshold.
+ * @throws {Error} If the iteration count falls outside the supported range.
  */
 async function decryptMessage(pass, bundle) {
   const iv = b64.from(bundle.iv);
@@ -144,6 +148,10 @@ async function decryptMessage(pass, bundle) {
   if (iterations < MIN_KDF_ITERATIONS) {
     throw new Error('Security parameters below acceptable threshold');
   }
+  // Prevent denial of service from a bundle demanding an absurd workload
+  if (iterations > MAX_KDF_ITERATIONS) {
+    throw new Error('Security parameters above supported range');
+  }
   const key = await deriveKey(pass, salt, iterations);
   const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, b64.from(bundle.ct));
   return dec.decode(ptBuf);
@@ -151,7 +159,7 @@ async function decryptMessage(pass, bundle) {
 
 // Export for browsers (window.CipherCrypto) and Node.js (module.exports)
 const CipherCrypto = {
-  APP_VERSION, KDF_ITERATIONS, MIN_KDF_ITERATIONS, DEBOUNCE_DELAY,
+  APP_VERSION, KDF_ITERATIONS, MIN_KDF_ITERATIONS, MAX_KDF_ITERATIONS, DEBOUNCE_DELAY,
   enc, dec, b64, rand,
   formatCiphertext, parseCiphertext, deriveKey, encryptMessage, decryptMessage,
 };

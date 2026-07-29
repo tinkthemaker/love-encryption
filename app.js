@@ -191,6 +191,9 @@
    */
   function hideResult() {
     resultOverlay.classList.remove('active');
+    // Don't leave a decrypted message (or ciphertext) sitting in the DOM
+    resultContentEl.value = '';
+    resultContentEl.hidden = false;
     resultCopyBtn.textContent = 'Copy';
     resultCopyBtn.classList.remove('copied');
     resultContentEl.style.height = '';
@@ -300,7 +303,8 @@
   function replyWithDecrypted() {
     const replyText = resultContentEl.value;
     if (!replyText) return;
-    // Hide modal first so the textarea reflow doesn't look broken
+    // Hide modal first so the textarea reflow doesn't look broken.
+    // hideResult() wipes the textarea, so replyText is captured above.
     hideResult();
     // Switch to encrypt tab
     switchTab('encrypt');
@@ -459,6 +463,7 @@
     ptEl.value = '';
     ctEl.value = '';
     passEl.value = '';
+    resultContentEl.value = '';
     sessionPassphrase = ''; // forget the in-memory passphrase
     updatePasswordStrength();
     switchTab('encrypt');
@@ -474,12 +479,14 @@
     if (isProcessing) return;
     vibrate();
     try {
-      const pass = passEl.value.trim();
-      if (!pass) {
+      // Only the emptiness check is trimmed — the passphrase and the
+      // message are encrypted exactly as typed, whitespace included.
+      const pass = passEl.value;
+      if (!pass.trim()) {
         return setStatus('Type the passphrase you and B agreed on first', 'danger');
       }
-      const plaintext = ptEl.value.trim();
-      if (!plaintext) {
+      const plaintext = ptEl.value;
+      if (!plaintext.trim()) {
         return setStatus('Type the message you want to protect', 'danger');
       }
       setProcessing(true);
@@ -510,8 +517,8 @@
     if (isProcessing) return;
     vibrate();
     try {
-      const pass = passEl.value.trim();
-      if (!pass) {
+      const pass = passEl.value;
+      if (!pass.trim()) {
         return setStatus('Type the passphrase you and B agreed on first', 'danger');
       }
       const raw = ctEl.value.trim();
@@ -744,8 +751,14 @@
       return;
     }
 
-    // Enter triggers encrypt/decrypt (but not inside a textarea)
-    if (e.key === 'Enter' && !e.shiftKey && e.target.tagName !== 'TEXTAREA') {
+    // Enter triggers encrypt/decrypt, but must not swallow activation of
+    // whatever the user actually has focused (buttons, tabs, links) or
+    // interrupt typing in a textarea.
+    const target = e.target instanceof Element ? e.target : null;
+    if (target && (target.tagName === 'TEXTAREA' || target.closest('button, a, [role="tab"]'))) {
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (resultOverlay.classList.contains('active')) {
         hideResult();
