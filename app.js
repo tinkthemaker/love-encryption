@@ -34,7 +34,11 @@
   const tabEncrypt = $('#tab-encrypt');
   const tabDecrypt = $('#tab-decrypt');
   const strengthEl = $('#strength');
+  const appVersionEl = $('#appVersion');
   const charCountEls = document.querySelectorAll('.char-count');
+
+  // Keep the header badge in sync with the real app version.
+  if (appVersionEl) appVersionEl.textContent = `v${APP_VERSION}`;
 
   // --- State ---
   let isProcessing = false;
