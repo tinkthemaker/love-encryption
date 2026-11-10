@@ -19,7 +19,12 @@ const APP_VERSION =
   (typeof globalThis !== 'undefined' && globalThis.CIPHER_VERSION && globalThis.CIPHER_VERSION.APP_VERSION) || 1;
 const KDF_ITERATIONS = 310000;
 const MIN_KDF_ITERATIONS = 100000;
+// Upper bound prevents a crafted message from hanging the tab with an
+// absurd iteration count. Well above the current 310k default so
+// legitimate future bumps still work.
+const MAX_KDF_ITERATIONS = 2000000;
 const DEBOUNCE_DELAY = 150;
+const ALG_ID = 'AES-GCM-256/PBKDF2-SHA256';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -121,10 +126,11 @@ async function encryptMessage(pass, plaintext, iterations = KDF_ITERATIONS) {
   const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
   return {
     v: APP_VERSION,
-    alg: 'AES-GCM-256/PBKDF2-SHA256',
+    alg: ALG_ID,
     iv: b64.to(iv),
     salt: b64.to(salt),
     iters: iterations,
+    ts: Date.now(),
     ct: b64.to(ct),
   };
 }
@@ -137,12 +143,23 @@ async function encryptMessage(pass, plaintext, iterations = KDF_ITERATIONS) {
  * @throws {Error} If iterations count is below minimum threshold.
  */
 async function decryptMessage(pass, bundle) {
+  // Reject messages we can't actually handle before spending KDF time.
+  if (bundle.alg && bundle.alg !== ALG_ID) {
+    throw new Error('Unsupported encryption algorithm in message');
+  }
+  if (typeof bundle.v === 'number' && bundle.v > APP_VERSION) {
+    throw new Error('Message was created by a newer version of CIPHER');
+  }
   const iv = b64.from(bundle.iv);
   const salt = b64.from(bundle.salt);
   const iterations = Number(bundle.iters || KDF_ITERATIONS);
-  // Prevent downgrade attacks by enforcing minimum iterations
+  // Prevent downgrade attacks by enforcing minimum iterations, and bound
+  // the maximum so a crafted bundle can't hang the tab on PBKDF2.
   if (iterations < MIN_KDF_ITERATIONS) {
     throw new Error('Security parameters below acceptable threshold');
+  }
+  if (iterations > MAX_KDF_ITERATIONS) {
+    throw new Error('Iteration count exceeds maximum allowed');
   }
   const key = await deriveKey(pass, salt, iterations);
   const ptBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, b64.from(bundle.ct));
@@ -151,7 +168,7 @@ async function decryptMessage(pass, bundle) {
 
 // Export for browsers (window.CipherCrypto) and Node.js (module.exports)
 const CipherCrypto = {
-  APP_VERSION, KDF_ITERATIONS, MIN_KDF_ITERATIONS, DEBOUNCE_DELAY,
+  APP_VERSION, KDF_ITERATIONS, MIN_KDF_ITERATIONS, MAX_KDF_ITERATIONS, DEBOUNCE_DELAY,
   enc, dec, b64, rand,
   formatCiphertext, parseCiphertext, deriveKey, encryptMessage, decryptMessage,
 };

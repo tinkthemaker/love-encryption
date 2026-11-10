@@ -42,6 +42,11 @@
   // 'plaintext'  = decryption result (no QR/Link, but Reply)
   // 'ciphertext' = encryption result (QR + Link, no Reply)
   let lastResultMode = null;
+  // Element that had focus before the result modal opened — restored on close.
+  let lastFocusedEl = null;
+  // Messages longer than this produce ciphertext blocks that may exceed
+  // what some messengers will relay intact.
+  const LONG_MESSAGE_WARN_CHARS = 20000;
   // Session passphrase: held only in memory for the lifetime of the page
   // (never persisted). Lets Reply prefills work without re-typing.
   // Not used for anything except the Reply shortcut.
@@ -135,6 +140,7 @@
    */
   async function showResult(mode, content, opts = {}) {
     lastResultMode = mode;
+    lastFocusedEl = document.activeElement;
     const isEncrypted = mode === 'encrypted';
     resultTitleEl.textContent = isEncrypted ? 'Encrypted' : 'Decrypted';
     resultContentEl.value = content;
@@ -197,6 +203,10 @@
     resultQrWrap.hidden = true;
     resultHintEl.hidden = true;
     lastResultMode = null;
+    if (lastFocusedEl && typeof lastFocusedEl.focus === 'function') {
+      lastFocusedEl.focus();
+    }
+    lastFocusedEl = null;
   }
 
   /**
@@ -323,7 +333,8 @@
     const match = hash.match(/^#d=(.+)$/);
     if (!match) return;
     try {
-      const decoded = decodeURIComponent(escape(atob(match[1])));
+      const bytes = Uint8Array.from(atob(match[1]), c => c.charCodeAt(0));
+      const decoded = new TextDecoder().decode(bytes);
       // Validate quickly: must look like one of our armored blocks
       if (decoded.includes('-----BEGIN SECRET MESSAGE-----') &&
           decoded.includes('-----END SECRET MESSAGE-----')) {
@@ -489,8 +500,12 @@
       // Remember the passphrase in memory for the Reply shortcut.
       // Never persisted, cleared on tab close or Clear All.
       sessionPassphrase = pass;
+      const isLongMessage = plaintext.length > LONG_MESSAGE_WARN_CHARS;
+      const longWarning = isLongMessage
+        ? '<strong>Long message</strong> — this ciphertext will be large and some messengers may truncate it. '
+        : '';
       showResult('encrypted', formattedCiphertext, {
-        hint: 'The armored block above works in any messenger \u2014 paste it into Signal, iMessage, WhatsApp, or email. <strong>Send the passphrase to B separately</strong> \u2014 in person, on a call, or in a separate message. Never text it with the message. The Link button gives B a one-tap URL. QR is for in-person handoff only.',
+        hint: longWarning + 'The armored block above works in any messenger \u2014 paste it into Signal, iMessage, WhatsApp, or email. <strong>Send the passphrase to B separately</strong> \u2014 in person, on a call, or in a separate message. Never text it with the message. The Link button gives B a one-tap URL. QR is for in-person handoff only.',
       });
       setStatus('ENCRYPTION COMPLETE');
       // Auto-clear the plaintext from the input so it doesn't sit on screen
@@ -529,8 +544,11 @@
       const msg = await decryptMessage(pass, bundle);
       // Remember the passphrase in memory for the Reply shortcut
       sessionPassphrase = pass;
+      const sentAt = typeof bundle.ts === 'number' && bundle.ts > 0
+        ? new Date(bundle.ts).toLocaleString()
+        : null;
       showResult('decrypted', msg, {
-        hint: 'Tap <strong>Reply</strong> below to send a message back. The passphrase stays in memory for this tab only \u2014 close the tab and it\u2019s gone.',
+        hint: (sentAt ? `Sent ${sentAt}. ` : '') + 'Tap <strong>Reply</strong> below to send a message back. The passphrase stays in memory for this tab only \u2014 close the tab and it\u2019s gone.',
       });
       setStatus('DECRYPTION COMPLETE');
     } catch (err) {
@@ -741,6 +759,22 @@
     if (e.key === 'Escape' && resultOverlay.classList.contains('active')) {
       e.preventDefault();
       hideResult();
+      return;
+    }
+
+    // Tab is trapped inside the result modal while it's open
+    if (e.key === 'Tab' && resultOverlay.classList.contains('active')) {
+      const focusables = [...resultOverlay.querySelectorAll('button, textarea, input, select, [href], [tabindex]')]
+        .filter(el => !el.hidden && !el.disabled && el.tabIndex >= 0 && el.offsetParent !== null);
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      const outside = !resultOverlay.contains(active);
+      if (e.shiftKey ? (active === first || outside) : (active === last || outside)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
       return;
     }
 

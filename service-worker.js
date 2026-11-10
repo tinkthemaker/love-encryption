@@ -107,7 +107,11 @@ async function staleWhileRevalidate(request) {
     })
     .catch(() => null);
 
-  return cachedResponse || fetchPromise;
+  // respondWith() requires a Response — if both cache and network fail,
+  // return an explicit offline response instead of resolving null.
+  return cachedResponse || fetchPromise.then(res =>
+    res || new Response('Offline', { status: 503, statusText: 'Service Unavailable' })
+  );
 }
 
 /**

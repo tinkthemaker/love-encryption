@@ -28,7 +28,7 @@ const moduleFactory = new Function('module', 'exports', 'require', cryptoSource)
 moduleFactory(moduleProxy, cryptoModule, undefined);
 
 const {
-  APP_VERSION, KDF_ITERATIONS, MIN_KDF_ITERATIONS,
+  APP_VERSION, KDF_ITERATIONS, MIN_KDF_ITERATIONS, MAX_KDF_ITERATIONS,
   b64, rand, formatCiphertext, parseCiphertext,
   deriveKey, encryptMessage, decryptMessage,
 } = moduleProxy.exports;
@@ -100,6 +100,39 @@ await test('iteration count at exact minimum is accepted', async () => {
   const bundle = await encryptMessage('pass', 'msg', MIN_KDF_ITERATIONS);
   bundle.iters = MIN_KDF_ITERATIONS;
   assert.equal(await decryptMessage('pass', bundle), 'msg');
+});
+
+await test('iteration count above maximum is rejected', async () => {
+  const bundle = await encryptMessage('pass', 'msg', MIN_KDF_ITERATIONS);
+  bundle.iters = MAX_KDF_ITERATIONS + 1;
+  await assert.rejects(
+    () => decryptMessage('pass', bundle),
+    /Iteration count exceeds maximum allowed/,
+  );
+});
+
+await test('mismatched algorithm identifier is rejected', async () => {
+  const bundle = await encryptMessage('pass', 'msg', MIN_KDF_ITERATIONS);
+  bundle.alg = 'AES-GCM-128/PBKDF2-SHA256';
+  await assert.rejects(
+    () => decryptMessage('pass', bundle),
+    /Unsupported encryption algorithm/,
+  );
+});
+
+await test('bundle from a newer app version is rejected', async () => {
+  const bundle = await encryptMessage('pass', 'msg', MIN_KDF_ITERATIONS);
+  bundle.v = APP_VERSION + 1;
+  await assert.rejects(
+    () => decryptMessage('pass', bundle),
+    /newer version of CIPHER/,
+  );
+});
+
+await test('encryptMessage includes a numeric timestamp', async () => {
+  const bundle = await encryptMessage('pass', 'msg', MIN_KDF_ITERATIONS);
+  assert.equal(typeof bundle.ts, 'number');
+  assert.ok(bundle.ts > 0);
 });
 
 await test('iteration count defaults to KDF_ITERATIONS when missing', async () => {
