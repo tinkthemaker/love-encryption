@@ -235,6 +235,9 @@
    */
   function hideResult() {
     resultOverlay.classList.remove('active');
+    // An error from a modal action (clipboard, QR) is moot once it closes;
+    // don't leave it tinting the compose card underneath.
+    if (statusEl.classList.contains('danger')) setStatus('');
     // Don't leave a decrypted message (or ciphertext) sitting in the DOM
     resultContentEl.value = '';
     resultContentEl.hidden = false;
@@ -757,9 +760,14 @@
     ptEl.addEventListener('input', updateCharCount);
     ctEl.addEventListener('input', updateCharCount);
 
-    // Typing sends a soft ripple through the dither field (position only)
+    // Typing sends a soft ripple through the dither field (position only).
+    // It also means the user is fixing whatever went wrong, so let a
+    // standing error (and the coral card tint keyed off it) settle.
     for (const el of [passEl, ptEl, ctEl]) {
-      el.addEventListener('input', () => fx('key', el));
+      el.addEventListener('input', () => {
+        fx('key', el);
+        if (statusEl.classList.contains('danger')) setStatus('');
+      });
     }
 
     // Modal buttons and overlay

@@ -136,12 +136,18 @@
   // Read the page layout (document coords, transform-free via offsetTop) and
   // derive every scene constant. Cheap; called on resize, load, font and layout
   // changes, never per frame.
+  var layoutKey = '';
   function layout() {
     var vw = window.innerWidth || 360, i, k, d;
     var card = document.querySelector('.settings'), hd = document.querySelector('header');
     var a = clamp((900 - vw) / 340, 0, 1);
     var g = card ? docTop(card) / cell : H * 0.5;
     var hb = hd ? (docTop(hd) + hd.offsetHeight) / cell : g * 0.4;
+    // ResizeObserver/animationend fire often (e.g. dragging the textarea
+    // handle); skip the rebuild when nothing the scene depends on moved.
+    var key = W + ',' + H + ',' + cell + ',' + vw + ',' + g + ',' + hb + ',' + (hd ? hd.offsetWidth : 0);
+    if (key === layoutKey) return false;
+    layoutKey = key;
     G.a = a; G.g = g; G.hb = hb;
     var wh = clamp(g - hb, 22, Math.max(22, g * 0.85)); G.wh = wh;
     var vs = cell === 4 ? 0.92 : 1;
@@ -175,9 +181,10 @@
       starX[i] = (rnd() * W) | 0; starY[i] = (Math.pow(rnd(), 1.1) * G.starSpan) | 0;
       starP[i] = rnd() * 6.283; starS[i] = 0.8 + rnd() * 2.2;
     }
+    return true;
   }
 
-  function relayout() { if (!W) return; layout(); if (reduced) renderStatic(); }
+  function relayout() { if (!W) return; if (layout() && reduced) renderStatic(); }
 
   function resize() {
     var vw = window.innerWidth || 360, vh = window.innerHeight || 640;
@@ -195,6 +202,7 @@
     gY = new Float32Array(H); pY = new Float32Array(H);
     rowAdd = new Float32Array(H); rowGap = new Uint8Array(H);
     scrollY = Math.max(0, window.pageYOffset || 0);
+    layoutKey = '';                               // dec[] was reallocated: always refill
     layout();
     if (ptr.seen) { ptr.tx = clamp(ptr.tx, 0, W); ptr.ty = clamp(ptr.ty, 0, H); }
     if (reduced) renderStatic();
@@ -413,10 +421,14 @@
     ptr.target = 1;
   }
   function onPointerEnd(e) { if (e.pointerType === 'touch') ptr.target = 0; }
+  // a mouse leaving the window (relatedTarget null) lets the light fade too
+  function onPointerOut(e) { if (!e.relatedTarget) ptr.target = 0; }
   window.addEventListener('pointermove', onPointer, { passive: true });
   window.addEventListener('pointerdown', onPointer, { passive: true });
   window.addEventListener('pointerup', onPointerEnd, { passive: true });
   window.addEventListener('pointercancel', onPointerEnd, { passive: true });
+  window.addEventListener('pointerout', onPointerOut, { passive: true });
+  window.addEventListener('blur', function () { ptr.target = 0; });
 
   function onScroll() {
     scrollY = Math.max(0, window.pageYOffset || 0);
