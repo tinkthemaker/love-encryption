@@ -118,6 +118,7 @@ app.js                  Encryption logic and UI
 crypto.js               Shared crypto module (AES-GCM, PBKDF2, base64)
 version.js              Single source of truth for the app version
 style.css               Styling, animations, and responsive layout
+dither-bg.js            Ambient dithered canvas background (zero deps)
 service-worker.js       Offline caching (stale-while-revalidate)
 manifest.webmanifest    PWA configuration
 vendor/

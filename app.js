@@ -40,6 +40,26 @@
   // Keep the header badge in sync with the real app version.
   if (appVersionEl) appVersionEl.textContent = `v${APP_VERSION}`;
 
+  // --- Ambient FX bridge ---
+  // Purely cosmetic. Tells the dither field (dither-bg.js) and the CSS what
+  // the app is doing so motion can follow the user. Never touches secrets:
+  // only an event kind and a screen position leave this function.
+  const rootEl = document.documentElement;
+  function fx(kind, el) {
+    const field = window.DitherField;
+    if (!field || typeof field.pulse !== 'function') return;
+    let x, y;
+    if (el && el.getBoundingClientRect) {
+      const r = el.getBoundingClientRect();
+      x = r.left + r.width / 2;
+      y = r.top + r.height / 2;
+    }
+    try { field.pulse(kind, x, y); } catch { /* cosmetic only */ }
+  }
+  function activeActionBtn() {
+    return navEncrypt.classList.contains('active') ? encryptBtn : decryptBtn;
+  }
+
   // --- State ---
   let isProcessing = false;
   // Result-mode flags control which extra buttons are visible on the modal.
@@ -96,11 +116,22 @@
     statusEl.textContent = msg;
     statusEl.className = 'status';
     if (type !== 'muted') statusEl.classList.add(type);
+    if (type === 'danger') fx('error', activeActionBtn());
     if (msg) {
       statusEl.classList.add('visible');
     } else {
       statusEl.classList.remove('visible');
     }
+  }
+
+  /**
+   * Validation failure: show why, then put the cursor where the fix goes.
+   * On phones the status line can sit below the fold, so focusing the
+   * field is what actually tells the user where to look.
+   */
+  function needs(el, msg) {
+    setStatus(msg, 'danger');
+    el.focus();
   }
 
   /**
@@ -111,6 +142,8 @@
     isProcessing = processing;
     encryptBtn.disabled = processing;
     decryptBtn.disabled = processing;
+    rootEl.toggleAttribute('data-busy', processing);
+    if (processing) fx('busy', activeActionBtn());
 
     if (processing) {
       // Store original text and replace with processing indicator
@@ -142,7 +175,14 @@
     const isEncrypted = mode === 'encrypted';
     resultTitleEl.textContent = isEncrypted ? 'Encrypted' : 'Decrypted';
     resultContentEl.value = content;
+    // Let the modal grow out of the button that produced it.
+    const origin = activeActionBtn().getBoundingClientRect();
+    if (origin.width) {
+      resultOverlay.style.setProperty('--ox', `${origin.left + origin.width / 2}px`);
+      resultOverlay.style.setProperty('--oy', `${origin.top + origin.height / 2}px`);
+    }
     resultOverlay.classList.add('active');
+    fx('done', activeActionBtn());
 
     // Auto-expand textarea to fit content
     autoExpandTextarea(resultContentEl);
@@ -195,6 +235,9 @@
    */
   function hideResult() {
     resultOverlay.classList.remove('active');
+    // An error from a modal action (clipboard, QR) is moot once it closes;
+    // don't leave it tinting the compose card underneath.
+    if (statusEl.classList.contains('danger')) setStatus('');
     // Don't leave a decrypted message (or ciphertext) sitting in the DOM
     resultContentEl.value = '';
     resultContentEl.hidden = false;
@@ -362,6 +405,9 @@
     navDecrypt.classList.toggle('active', !isEncrypt);
     navEncrypt.setAttribute('aria-selected', isEncrypt ? 'true' : 'false');
     navDecrypt.setAttribute('aria-selected', isEncrypt ? 'false' : 'true');
+    const prevMode = rootEl.dataset.mode;
+    rootEl.dataset.mode = isEncrypt ? 'encrypt' : 'decrypt';
+    if (prevMode !== rootEl.dataset.mode) fx('mode', isEncrypt ? navEncrypt : navDecrypt);
 
     // Update button labels
     encryptBtn.textContent = 'Encrypt';
@@ -487,11 +533,11 @@
       // message are encrypted exactly as typed, whitespace included.
       const pass = passEl.value;
       if (!pass.trim()) {
-        return setStatus('Type the passphrase you and B agreed on first', 'danger');
+        return needs(passEl, 'Type the passphrase you and B agreed on first');
       }
       const plaintext = ptEl.value;
       if (!plaintext.trim()) {
-        return setStatus('Type the message you want to protect', 'danger');
+        return needs(ptEl, 'Type the message you want to protect');
       }
       setProcessing(true);
       setStatus('ENCRYPTING...');
@@ -523,17 +569,17 @@
     try {
       const pass = passEl.value;
       if (!pass.trim()) {
-        return setStatus('Type the passphrase you and B agreed on first', 'danger');
+        return needs(passEl, 'Type the passphrase you and B agreed on first');
       }
       const raw = ctEl.value.trim();
       if (!raw) {
-        return setStatus('Paste the encrypted message B sent you', 'danger');
+        return needs(ctEl, 'Paste the encrypted message B sent you');
       }
       let bundle;
       try {
         bundle = parseCiphertext(raw);
       } catch {
-        return setStatus("That doesn't look like a CIPHER message \u2014 check the BEGIN/END markers", 'danger');
+        return needs(ctEl, "That doesn't look like a CIPHER message \u2014 check the BEGIN/END markers");
       }
       setProcessing(true);
       setStatus('DECRYPTING...');
@@ -713,6 +759,16 @@
     // Character count on textarea input
     ptEl.addEventListener('input', updateCharCount);
     ctEl.addEventListener('input', updateCharCount);
+
+    // Typing sends a soft ripple through the dither field (position only).
+    // It also means the user is fixing whatever went wrong, so let a
+    // standing error (and the coral card tint keyed off it) settle.
+    for (const el of [passEl, ptEl, ctEl]) {
+      el.addEventListener('input', () => {
+        fx('key', el);
+        if (statusEl.classList.contains('danger')) setStatus('');
+      });
+    }
 
     // Modal buttons and overlay
     resultCopyBtn.addEventListener('click', copyResultToClipboard);

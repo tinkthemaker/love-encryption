@@ -51,6 +51,43 @@ drive a real browser instead.
 `Run self-test` does a full encrypt→decrypt of a test vector and reports
 `Self-test passed (KDF took Nms)`, which is a fast smoke test of the crypto path.
 
+## Ditherfield redesign (v8)
+
+The background is a canvas (`#ditherField`) drawn by `dither-bg.js`, and the chrome changes with
+the active tab. Things to know when testing:
+
+- `html[data-mode]` is `encrypt` or `decrypt`. `app.js` sets it on every tab switch, and CSS keys
+  the whole palette off it: rose "dusk" for encrypt, periwinkle "tide" for decrypt. The field also
+  watches the attribute itself. If a decrypt screenshot still looks rose, read
+  `document.documentElement.dataset.mode` before assuming the palette is broken.
+- `html[data-busy]` is present while the KDF, encrypt or decrypt runs. Assert on it to catch the
+  scan band.
+- Both panels are always in the DOM. The inactive one is `visibility: hidden`, not `display: none`,
+  so use `.tab-content.active` to find the panel that is showing. Don't decide visibility from
+  `display`. `.compose` is the card holding the tabs and both panels. `.stage` is the grid cell
+  holding the two panels.
+- To trigger effects by hand, call `window.DitherField.pulse(kind, x, y)`. `kind` is one of `key`,
+  `busy`, `done`, `error`, `mode`, and `x`/`y` are viewport pixels. If the canvas failed to load,
+  `DitherField` is a no-op stub, so a pulse does nothing and throws no error.
+- Reduced motion: use `page.emulateMedia({ reducedMotion: 'reduce' })`. The field should draw one
+  frame and stop. To prove there is no animation loop, install a `requestAnimationFrame` counter
+  with `addInitScript` before the page loads. The count should stay flat after load under reduced
+  motion and climb under normal motion.
+- Production CSP: `vercel.json` sets `style-src 'self'` and `script-src 'self'`. Inline `<style>`,
+  `style=""` attributes and inline `<script>` break on Vercel but work on `python -m http.server`,
+  which sends no CSP, so a page can pass locally and fail in production. JS-side
+  `element.style.setProperty` (used for `--ox`/`--oy`) is allowed. To test with the real header,
+  create the context with `serviceWorkers: 'block'` and route the document through the CSP from
+  `vercel.json`:
+
+  ```js
+  await context.route('**/*', async route => {
+    const res = await route.fetch();
+    await route.fulfill({ response: res,
+      headers: { ...res.headers(), 'content-security-policy': CSP } });
+  });
+  ```
+
 ## Building hostile / edge-case ciphertext
 
 The armored format is `-----BEGIN SECRET MESSAGE-----` + base64(JSON bundle) +
