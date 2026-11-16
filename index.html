@@ -18,21 +18,14 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Dither field: ditherdance-style hashed sky + Browserbase mountains -->
+  <!-- Dither field: living full-viewport background (dither-bg.js) -->
   <canvas id="ditherField"></canvas>
-  <!-- Background Effects (glow/noise layers retired in dither theme) -->
-  <div class="bg-grid"></div>
-  <div class="bg-glow bg-glow-1"></div>
-  <div class="bg-glow bg-glow-2"></div>
-  <div class="bg-scanlines"></div>
-  <div class="bg-noise"></div>
-  <div class="bg-vignette"></div>
 
   <main>
-    <header>
+    <header class="blk">
       <div class="logo-icon">
         <!-- Pixel Art Lock Icon -->
-        <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
           <rect x="3" y="7" width="10" height="8" fill="white"/>
           <rect x="5" y="3" width="6" height="5" fill="none" stroke="white" stroke-width="2"/>
           <rect x="7" y="10" width="2" height="3" fill="black"/>
@@ -42,9 +35,13 @@
       <span id="appVersion" class="version">v3</span>
     </header>
 
-    <section class="settings">
+    <section class="settings blk">
+      <span class="thread t1" aria-hidden="true"><i></i></span>
       <div class="settings-header">
-        <label for="pass" class="settings-title">Passphrase</label>
+        <div class="field-head">
+          <span class="step">01</span>
+          <label for="pass" class="settings-title">Passphrase</label>
+        </div>
         <p class="settings-subtitle">The secret you and B will both type. Never text it with the message.</p>
       </div>
       <div class="settings-content">
@@ -74,34 +71,52 @@
       </div>
     </section>
 
-    <nav class="tabs-nav" role="tablist" aria-label="Message actions">
-      <button id="nav-encrypt" class="tab-btn active" role="tab" type="button" aria-selected="true" aria-controls="tab-encrypt">Encrypt</button>
-      <button id="nav-decrypt" class="tab-btn decrypt" role="tab" type="button" aria-selected="false" aria-controls="tab-decrypt">Decrypt</button>
-    </nav>
+    <section class="compose blk">
+      <span class="thread t2" aria-hidden="true"><i></i></span>
+      <nav class="tabs-nav" role="tablist" aria-label="Message actions">
+        <span class="tab-indicator" aria-hidden="true"></span>
+        <button id="nav-encrypt" class="tab-btn active" role="tab" type="button" aria-selected="true" aria-controls="tab-encrypt">Encrypt</button>
+        <button id="nav-decrypt" class="tab-btn decrypt" role="tab" type="button" aria-selected="false" aria-controls="tab-decrypt">Decrypt</button>
+      </nav>
 
-    <div id="tab-encrypt" class="tab-content active" role="tabpanel" aria-labelledby="nav-encrypt">
-      <div class="message-card">
-        <label for="pt">Input Message</label>
-        <textarea id="pt" placeholder="Type your secret message here..." aria-describedby="status"></textarea>
-        <span class="char-count" aria-live="polite"></span>
-        <button id="encryptBtn" class="action-btn encrypt" type="button">Encrypt</button>
-        <span class="hint">Press Enter to encrypt</span>
-      </div>
-    </div>
+      <div class="stage">
+        <div id="tab-encrypt" class="tab-content active" role="tabpanel" aria-labelledby="nav-encrypt">
+          <div class="message-card">
+            <div class="field-head">
+              <span class="step">02</span>
+              <label for="pt">Input Message</label>
+            </div>
+            <textarea id="pt" placeholder="Type your secret message here..." aria-describedby="status"></textarea>
+            <div class="foot-row">
+              <span class="step step-act">03 Seal</span>
+              <span class="char-count" aria-live="polite"></span>
+            </div>
+            <button id="encryptBtn" class="action-btn encrypt" type="button">Encrypt</button>
+            <span class="hint">Press Enter to encrypt</span>
+          </div>
+        </div>
 
-    <div id="tab-decrypt" class="tab-content" role="tabpanel" aria-labelledby="nav-decrypt">
-      <div class="message-card">
-        <label for="ct">Encrypted Data</label>
-        <textarea id="ct" placeholder="Paste encrypted message here..." aria-describedby="status"></textarea>
-        <span class="char-count" aria-live="polite"></span>
-        <button id="decryptBtn" class="action-btn decrypt" type="button">Decrypt</button>
-        <span class="hint">Press Enter to decrypt</span>
+        <div id="tab-decrypt" class="tab-content" role="tabpanel" aria-labelledby="nav-decrypt">
+          <div class="message-card">
+            <div class="field-head">
+              <span class="step">02</span>
+              <label for="ct">Encrypted Data</label>
+            </div>
+            <textarea id="ct" placeholder="Paste encrypted message here..." aria-describedby="status"></textarea>
+            <div class="foot-row">
+              <span class="step step-act">03 Open</span>
+              <span class="char-count" aria-live="polite"></span>
+            </div>
+            <button id="decryptBtn" class="action-btn decrypt" type="button">Decrypt</button>
+            <span class="hint">Press Enter to decrypt</span>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
 
-    <footer class="footer">
+    <footer class="footer blk">
       <div class="footer-line"></div>
       <p class="dedication">Dedicated to B.</p>
       <p class="tech-info">AES-256-GCM // PBKDF2-SHA256</p>
