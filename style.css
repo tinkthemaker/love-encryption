@@ -26,6 +26,19 @@
     --accent-glow:   rgba(255, 93, 143, 0.35);
     --on-accent:     #0a0b0f;
 
+    /* Status */
+    --success: #4ade9b;
+    --warning: #ffd166;
+    --caution: #ff8a5c;
+    --danger:  #ff8a9c;
+
+    /* Atmosphere and surfaces */
+    --glow-cool: #5c7bff;       /* second backdrop glow */
+    --paper:     #ffffff;       /* QR panel: scanners need a light field */
+    --on-paper:  #0a0b0f;       /* text on --paper */
+    --scrim:     rgba(4, 5, 8, 0.75);          /* modal overlay */
+    --on-accent-track: rgba(10, 11, 15, 0.35); /* spinner track on accent fills */
+
     /* Sizing */
     --radius:    14px;
     --radius-sm: 10px;
@@ -144,7 +157,7 @@ label,
 .bg-glow-2 {
     width: min(280px, 65vw);
     height: min(280px, 65vw);
-    background: radial-gradient(circle, #5c7bff 0%, transparent 70%);
+    background: radial-gradient(circle, var(--glow-cool) 0%, transparent 70%);
     bottom: -12%;
     right: -12%;
     animation: glow-float-2 30s ease-in-out infinite;
@@ -440,29 +453,29 @@ input:focus {
 
 #strength.weak {
     --fill: 33%;
-    --fill-color: #ff8a5c;
+    --fill-color: var(--caution);
 }
 #strength.weak::after {
     content: 'Weak';
-    color: #ff8a5c;
+    color: var(--caution);
 }
 
 #strength.medium {
     --fill: 66%;
-    --fill-color: #ffd166;
+    --fill-color: var(--warning);
 }
 #strength.medium::after {
     content: 'Medium';
-    color: #ffd166;
+    color: var(--warning);
 }
 
 #strength.strong {
     --fill: 100%;
-    --fill-color: #4ade9b;
+    --fill-color: var(--success);
 }
 #strength.strong::after {
     content: 'Strong';
-    color: #4ade9b;
+    color: var(--success);
 }
 
 textarea {
@@ -546,20 +559,24 @@ textarea:focus::placeholder {
     to { opacity: 1; transform: translateY(0); }
 }
 
+.btn,
+.action-btn {
+    appearance: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
 .action-btn {
     width: 100%;
-    appearance: none;
     border: none;
-    border-radius: var(--radius-sm);
     padding: 16px;
     margin-top: 16px;
     font-size: 13px;
-    font-family: var(--font-ui);
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 1.5px;
-    cursor: pointer;
-    transition: all var(--transition-fast);
     background: var(--accent);
     color: var(--on-accent);
     min-height: 52px;
@@ -593,20 +610,21 @@ textarea:focus::placeholder {
     opacity: 1;
 }
 
+/* The hint is keyboard text, so touch-only devices don't get it. */
+@media (hover: none) and (pointer: coarse) {
+    .hint {
+        display: none;
+    }
+}
+
 .btn {
-    appearance: none;
     background: var(--surface-2);
     border: 1px solid var(--border);
     color: var(--text);
-    border-radius: var(--radius-sm);
     padding: 13px 16px;
     font-size: 12px;
-    font-family: var(--font-ui);
     font-weight: 600;
-    text-transform: uppercase;
     letter-spacing: 1px;
-    cursor: pointer;
-    transition: all var(--transition-fast);
     min-height: 48px;
 }
 
@@ -616,20 +634,18 @@ textarea:focus::placeholder {
     background: var(--surface-3);
 }
 
-.btn-subtle {
+/* Quiet tier: transparent, muted, 11px. Hover comes from .btn:hover. */
+.btn-subtle,
+.btn-close,
+.qr-btn {
     background: transparent;
-    border-color: var(--border);
     color: var(--muted);
     font-size: 11px;
-    padding: 10px 16px;
-    min-height: 40px;
-    letter-spacing: 1px;
 }
 
-.btn-subtle:hover {
-    color: var(--text);
-    border-color: var(--border-strong);
-    background: var(--surface-3);
+.btn-subtle {
+    padding: 10px 16px;
+    min-height: 40px;
 }
 
 .btn-subtle.confirm {
@@ -669,7 +685,7 @@ textarea:focus::placeholder {
     width: 18px;
     height: 18px;
     margin: -9px 0 0 -9px;
-    border: 2px solid rgba(10, 11, 15, 0.35);
+    border: 2px solid var(--on-accent-track);
     border-top-color: var(--on-accent);
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
@@ -686,7 +702,7 @@ textarea:focus::placeholder {
 .result-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(4, 5, 8, 0.75);
+    background: var(--scrim);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     display: flex;
@@ -773,38 +789,22 @@ textarea:focus::placeholder {
     border-color: var(--accent-hover);
 }
 
-.result-footer .btn.primary.copied {
-    background: #4ade9b;
-    border-color: #4ade9b;
+.result-footer .btn.copied,
+.result-footer .btn.copied:hover {
+    background: var(--success);
+    border-color: var(--success);
+    color: var(--on-accent);
     box-shadow: none;
 }
 
 .share-btn {
-    background: var(--surface-2);
-    border-color: var(--border);
     color: var(--muted);
-}
-
-.share-btn:hover {
-    color: var(--text);
-    border-color: var(--border-strong);
-    background: var(--surface-3);
 }
 
 .btn-close {
     width: 100%;
-    background: transparent;
-    border-color: var(--border);
-    color: var(--muted);
-    font-size: 11px;
     padding: 11px 16px;
     min-height: 42px;
-    letter-spacing: 1px;
-}
-
-.btn-close:hover {
-    color: var(--text);
-    border-color: var(--border-strong);
 }
 
 /* Hide Share button when Web Share API is unavailable */
@@ -820,7 +820,7 @@ textarea:focus::placeholder {
     gap: 10px;
     margin-top: 14px;
     padding: 16px;
-    background: var(--white, #ffffff);
+    background: var(--paper);
     border-radius: var(--radius-sm);
 }
 
@@ -833,16 +833,9 @@ textarea:focus::placeholder {
 }
 
 .qr-btn {
-    font-size: 11px;
     padding: 8px 12px;
     min-height: 36px;
     letter-spacing: 0.5px;
-    background: transparent;
-    color: var(--muted);
-    border-color: var(--border);
-}
-.qr-btn:hover {
-    color: var(--text);
 }
 
 .result-qr-caption {
@@ -850,7 +843,7 @@ textarea:focus::placeholder {
     font-size: 11px;
     letter-spacing: 0.5px;
     text-transform: uppercase;
-    color: #0a0b0f;
+    color: var(--on-paper);
     opacity: 0.7;
 }
 
@@ -899,7 +892,7 @@ textarea:focus::placeholder {
 }
 
 .status.danger {
-    color: #ff8a9c;
+    color: var(--danger);
 }
 
 .status.danger::before {

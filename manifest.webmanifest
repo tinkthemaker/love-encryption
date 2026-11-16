@@ -4,8 +4,8 @@
   "description": "Secure client-side message encryption using AES-256-GCM.",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#0a0b0f",
+  "theme_color": "#0a0b0f",
   "icons": [
     {
       "src": "heart-192.png",

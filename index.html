@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>CIPHER</title>
+  <title>Cipher</title>
   <meta name="description" content="Secure client-side message encryption using AES-256-GCM." />
 
   <!-- PWA & Mobile Themeing -->
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#000000" />
+  <meta name="theme-color" content="#0a0b0f" />
   <link rel="apple-touch-icon" href="heart-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -47,7 +47,7 @@
       </div>
       <div class="settings-content">
         <div class="form-group">
-          <input id="pass" type="password" placeholder="enter shared secret key" autocomplete="new-password">
+          <input id="pass" type="password" placeholder="Enter shared secret key" autocomplete="new-password">
           <button id="togglePassBtn" type="button" class="pass-toggle" aria-label="Toggle password visibility" aria-pressed="false">
             <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -58,11 +58,11 @@
               <line x1="1" y1="1" x2="23" y2="23"/>
             </svg>
           </button>
-          <div id="strength" role="meter" aria-label="Password strength" aria-valuetext=""></div>
+          <div id="strength" role="meter" aria-label="Password strength" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-valuetext=""></div>
         </div>
         <div class="passphrase-actions">
           <button id="generatePassBtn" class="btn btn-subtle" type="button" aria-label="Generate a random passphrase">Generate</button>
-          <button id="clearAllBtn" class="btn btn-subtle" type="button">Clear All</button>
+          <button id="clearAllBtn" class="btn btn-subtle" type="button">Clear all</button>
         </div>
       </div>
     </section>
@@ -74,8 +74,8 @@
 
     <div id="tab-encrypt" class="tab-content active" role="tabpanel" aria-labelledby="nav-encrypt">
       <div class="message-card">
-        <label for="pt">Input Message</label>
-        <textarea id="pt" placeholder="Type your secret message here..." aria-describedby="status"></textarea>
+        <label for="pt">Input message</label>
+        <textarea id="pt" placeholder="Type your secret message here…" aria-describedby="status"></textarea>
         <span class="char-count" aria-live="polite"></span>
         <button id="encryptBtn" class="action-btn encrypt" type="button">Encrypt</button>
         <span class="hint">Press Enter to encrypt</span>
@@ -84,8 +84,8 @@
 
     <div id="tab-decrypt" class="tab-content" role="tabpanel" aria-labelledby="nav-decrypt">
       <div class="message-card">
-        <label for="ct">Encrypted Data</label>
-        <textarea id="ct" placeholder="Paste encrypted message here..." aria-describedby="status"></textarea>
+        <label for="ct">Encrypted data</label>
+        <textarea id="ct" placeholder="Paste encrypted message here…" aria-describedby="status"></textarea>
         <span class="char-count" aria-live="polite"></span>
         <button id="decryptBtn" class="action-btn decrypt" type="button">Decrypt</button>
         <span class="hint">Press Enter to decrypt</span>

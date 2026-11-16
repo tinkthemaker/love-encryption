@@ -4,13 +4,15 @@
  * Bump this when the app changes in a way that requires a service
  * worker cache invalidation. Both the encrypted-bundle `v` field and
  * the service worker `CACHE_NAME` are derived from this constant.
+ * The bundle `v` field is informational only: decryptMessage never checks
+ * it, so bumping this does not affect messages encrypted by older versions.
  *
  * Wrapped in an IIFE so `const` declarations don't leak into the script's
  * shared global lexical environment (where they'd collide with other
  * <script>-loaded files).
  */
 (() => {
-  const APP_VERSION = 6; // bumped: service-worker routing + offline fallback fixes
+  const APP_VERSION = 7; // bumped: UI consistency pass (tokens, copy, a11y); cached assets changed
   const CACHE_NAME = `cipher-v${APP_VERSION}`;
 
   // Publish to every common global scope so crypto.js (loaded after us)

@@ -163,7 +163,7 @@
         resultCopyBtn.classList.remove('copied');
       }, 2000);
     } catch {
-      setStatus('Auto-copy unavailable \u2014 select text above to copy manually', 'muted');
+      setStatus('Auto-copy unavailable. Select the text above to copy it manually', 'muted');
     }
 
     // Mode-driven extra controls
@@ -267,7 +267,8 @@
       resultContentEl.hidden = true;
       resultQrWrap.hidden = false;
     } catch (err) {
-      setStatus(`ERROR: ${err.message}`, 'danger');
+      console.error(err);
+      setStatus('Couldn\u2019t make the QR code. Use Copy or Link instead.', 'danger');
     }
   }
 
@@ -294,8 +295,9 @@
         resultLinkBtn.textContent = 'Link';
         resultLinkBtn.classList.remove('copied');
       }, 1500);
-    } catch {
-      setStatus('ERROR: Clipboard access denied', 'danger');
+    } catch (err) {
+      console.error(err);
+      setStatus('Couldn\u2019t copy the link. Allow clipboard access and try again.', 'danger');
     }
   }
 
@@ -316,7 +318,7 @@
     ptEl.value = replyText;
     if (sessionPassphrase) passEl.value = sessionPassphrase;
     updateCharCount();
-    setStatus('Ready to reply \u2014 tweak the message and press Enter', 'muted');
+    setStatus('Ready to reply. Tweak the message and press Enter', 'muted');
     ptEl.focus();
   }
 
@@ -337,7 +339,7 @@
           decoded.includes('-----END SECRET MESSAGE-----')) {
         ctEl.value = decoded;
         switchTab('decrypt');
-        setStatus('Encrypted message loaded \u2014 type the passphrase and press Enter', 'muted');
+        setStatus('Encrypted message loaded. Type the passphrase and press Enter', 'muted');
       }
     } catch {
       // Bad fragment, ignore silently
@@ -370,8 +372,8 @@
     // Update dynamic labels and placeholders based on active tab
     const ptLabel = document.querySelector('label[for="pt"]');
     const ctLabel = document.querySelector('label[for="ct"]');
-    if (ptLabel) ptLabel.textContent = isEncrypt ? 'Input Message' : 'Plaintext';
-    if (ctLabel) ctLabel.textContent = isEncrypt ? 'Encrypted Data' : 'Paste Encrypted Message';
+    if (ptLabel) ptLabel.textContent = isEncrypt ? 'Input message' : 'Plaintext';
+    if (ctLabel) ctLabel.textContent = isEncrypt ? 'Encrypted data' : 'Paste encrypted message';
 
     // Update placeholders to match context
     ptEl.placeholder = isEncrypt ? 'Type your secret message here\u2026' : 'Type the message you want to protect\u2026';
@@ -390,7 +392,7 @@
 
   /**
    * Updates the password strength meter based on input.
-   * Sets aria-valuetext for screen reader accessibility.
+   * Sets aria-valuenow (0 to 3) and aria-valuetext for screen readers.
    *
    * Scoring: 0-6 points based on length, character class diversity.
    * Multi-word diceware-style passphrases (3+ words separated by
@@ -413,21 +415,27 @@
 
     strengthEl.className = '';
     let label = '';
+    let level = 0;
     if (!pass) {
       // No password entered
       strengthEl.removeAttribute('aria-valuetext');
+      strengthEl.setAttribute('aria-valuenow', '0');
     } else if (score >= 5) {
       strengthEl.classList.add('strong');
       label = 'Strong';
+      level = 3;
     } else if (score >= 3) {
       strengthEl.classList.add('medium');
       label = 'Medium';
+      level = 2;
     } else {
       strengthEl.classList.add('weak');
       label = 'Weak';
+      level = 1;
     }
     if (label) {
       strengthEl.setAttribute('aria-valuetext', label);
+      strengthEl.setAttribute('aria-valuenow', String(level));
     }
   }
 
@@ -441,19 +449,19 @@
     // If there's nothing to clear, just reset the button state
     const hasContent = passEl.value || ptEl.value || ctEl.value;
     if (!hasContent) {
-      clearAllBtn.textContent = 'Clear All';
+      clearAllBtn.textContent = 'Clear all';
       clearAllBtn.classList.remove('confirm');
       return;
     }
 
     // First click: ask for confirmation
     if (!clearAllBtn.classList.contains('confirm')) {
-      clearAllBtn.textContent = 'Confirm Clear?';
+      clearAllBtn.textContent = 'Confirm clear?';
       clearAllBtn.classList.add('confirm');
 
       // Reset button after 3 seconds if no second click
       resetConfirmTimeout = setTimeout(() => {
-        clearAllBtn.textContent = 'Clear All';
+        clearAllBtn.textContent = 'Clear all';
         clearAllBtn.classList.remove('confirm');
       }, 3000);
       return;
@@ -461,7 +469,7 @@
 
     // Second click: confirmed
     clearTimeout(resetConfirmTimeout);
-    clearAllBtn.textContent = 'Clear All';
+    clearAllBtn.textContent = 'Clear all';
     clearAllBtn.classList.remove('confirm');
 
     ptEl.value = '';
@@ -494,21 +502,22 @@
         return setStatus('Type the message you want to protect', 'danger');
       }
       setProcessing(true);
-      setStatus('ENCRYPTING...');
+      setStatus('Encrypting\u2026');
       const bundle = await encryptMessage(pass, plaintext);
       const formattedCiphertext = formatCiphertext(bundle);
       // Remember the passphrase in memory for the Reply shortcut.
       // Never persisted, cleared on tab close or Clear All.
       sessionPassphrase = pass;
       showResult('encrypted', formattedCiphertext, {
-        hint: 'The armored block above works in any messenger \u2014 paste it into Signal, iMessage, WhatsApp, or email. <strong>Send the passphrase to B separately</strong> \u2014 in person, on a call, or in a separate message. Never text it with the message. The Link button gives B a one-tap URL. QR is for in-person handoff only.',
+        hint: 'The armored block above works in any messenger. Paste it into Signal, iMessage, WhatsApp, or email. <strong>Send the passphrase to B separately.</strong> Do it in person, on a call, or in a separate message. Never text it with the message. The Link button gives B a one-tap URL. QR is for in-person handoff only.',
       });
-      setStatus('ENCRYPTION COMPLETE');
+      setStatus('Encrypted');
       // Auto-clear the plaintext from the input so it doesn't sit on screen
       ptEl.value = '';
       updateCharCount();
     } catch (err) {
-      setStatus(`ERROR: ${err.message}`, 'danger');
+      console.error(err);
+      setStatus('Couldn\u2019t encrypt. Try again, and run the self-test at the bottom of the page if it keeps failing.', 'danger');
     } finally {
       setProcessing(false);
     }
@@ -533,22 +542,23 @@
       try {
         bundle = parseCiphertext(raw);
       } catch {
-        return setStatus("That doesn't look like a CIPHER message \u2014 check the BEGIN/END markers", 'danger');
+        return setStatus('That doesn\u2019t look like a CIPHER message. Check the BEGIN/END markers', 'danger');
       }
       setProcessing(true);
-      setStatus('DECRYPTING...');
+      setStatus('Decrypting\u2026');
       const msg = await decryptMessage(pass, bundle);
       // Remember the passphrase in memory for the Reply shortcut
       sessionPassphrase = pass;
       showResult('decrypted', msg, {
-        hint: 'Tap <strong>Reply</strong> below to send a message back. The passphrase stays in memory for this tab only \u2014 close the tab and it\u2019s gone.',
+        hint: 'Tap <strong>Reply</strong> below to send a message back. The passphrase stays in memory for this tab only. Close the tab and it\u2019s gone.',
       });
-      setStatus('DECRYPTION COMPLETE');
+      setStatus('Decrypted');
     } catch (err) {
       if (err.message?.startsWith('Security parameters')) {
-        setStatus(`ERROR: ${err.message}`, 'danger');
+        console.error(err);
+        setStatus('Couldn\u2019t decrypt. This message uses security settings outside the range this app accepts, so ask B to send it again.', 'danger');
       } else {
-        setStatus("Couldn\u2019t decrypt \u2014 double-check the passphrase and try again", 'danger');
+        setStatus('Couldn\u2019t decrypt. Double-check the passphrase and try again', 'danger');
       }
     } finally {
       setProcessing(false);
@@ -612,9 +622,10 @@
       updatePasswordStrength();
       passEl.focus();
       passEl.select();
-      setStatus('Fresh passphrase generated \u2014 share it with B on a call, then hide it', 'muted');
+      setStatus('Fresh passphrase generated. Share it with B on a call, then hide it', 'muted');
     } catch (err) {
-      setStatus(`ERROR: ${err.message}`, 'danger');
+      console.error(err);
+      setStatus('Couldn\u2019t generate a passphrase. Reload the page and try again.', 'danger');
     }
   }
 
@@ -636,10 +647,11 @@
       if (recovered === TEST_PLAINTEXT) {
         setStatus(`Self-test passed (KDF took ${elapsed}ms)`, 'muted');
       } else {
-        setStatus('Self-test FAILED: decrypted text does not match', 'danger');
+        setStatus('Self-test failed: decrypted text does not match', 'danger');
       }
     } catch (err) {
-      setStatus(`Self-test FAILED: ${err.message}`, 'danger');
+      console.error(err);
+      setStatus(`Self-test failed: ${err.message}`, 'danger');
     } finally {
       setProcessing(false);
     }
@@ -660,8 +672,9 @@
         resultCopyBtn.textContent = 'Copy';
         resultCopyBtn.classList.remove('copied');
       }, 1500);
-    } catch {
-      setStatus('ERROR: Clipboard access denied', 'danger');
+    } catch (err) {
+      console.error(err);
+      setStatus('Couldn\u2019t copy. Select the text and copy it manually.', 'danger');
     }
   }
 

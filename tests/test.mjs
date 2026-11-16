@@ -606,6 +606,120 @@ await test('parseCiphertext: rejects base64 with invalid characters (not just at
   );
 });
 
+// --- UI consistency regression guards (static analysis) ---
+const styleCss = readFileSync(join(__dirname, '..', 'style.css'), 'utf-8').replace(/\r\n/g, '\n');
+const appSource = readFileSync(join(__dirname, '..', 'app.js'), 'utf-8');
+const manifestJson = JSON.parse(readFileSync(join(__dirname, '..', 'manifest.webmanifest'), 'utf-8'));
+
+await test('#strength meter declares aria-valuemin, aria-valuemax and aria-valuenow', () => {
+  const m = indexHtml.match(/<div id="strength"([^>]*)>/);
+  assert.ok(m, '#strength should exist');
+  assert.match(m[1], /aria-valuemin="0"/);
+  assert.match(m[1], /aria-valuemax="3"/);
+  assert.match(m[1], /aria-valuenow="0"/);
+});
+
+await test('app.js keeps aria-valuenow in step with aria-valuetext (0 to 3)', () => {
+  const fn = appSource.match(/function updatePasswordStrength\(\) \{[\s\S]*?\n  \}\n/);
+  assert.ok(fn, 'updatePasswordStrength should exist');
+  assert.match(fn[0], /aria-valuenow', '0'/);
+  for (const [label, level] of [['Weak', 1], ['Medium', 2], ['Strong', 3]]) {
+    assert.match(fn[0], new RegExp(`label = '${label}';\\s+level = ${level};`), `${label} should map to ${level}`);
+  }
+  assert.match(fn[0], /setAttribute\('aria-valuenow', String\(level\)\)/);
+});
+
+await test('theme-color meta and manifest colors match the --bg token', () => {
+  const bg = styleCss.match(/--bg:\s*(#[0-9a-fA-F]{6})/)[1].toLowerCase();
+  const meta = indexHtml.match(/<meta name="theme-color" content="(#[0-9a-fA-F]{6})"/);
+  assert.ok(meta, 'theme-color meta should exist');
+  assert.equal(meta[1].toLowerCase(), bg);
+  assert.equal(manifestJson.theme_color.toLowerCase(), bg);
+  assert.equal(manifestJson.background_color.toLowerCase(), bg);
+});
+
+await test('<title> matches the visible h1 casing', () => {
+  const title = indexHtml.match(/<title>([^<]*)<\/title>/)[1];
+  const h1 = indexHtml.match(/<h1>([^<]*)<\/h1>/)[1];
+  assert.equal(title, h1);
+});
+
+await test('style.css has no color literals outside :root and the allowed atmosphere/contrast spots', () => {
+  // Strip the :root block, comments, and the prefers-contrast block.
+  const stripped = styleCss
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/:root \{[\s\S]*?\n\}\n/, '')
+    .replace(/@media \(prefers-contrast: high\) \{[\s\S]*$/, '');
+  const offenders = [];
+  stripped.split('\n').forEach((line) => {
+    // Allowed: grid lines, scanlines, vignette (white/black rgba) and mask #000.
+    const l = line
+      .replace(/rgba\(\s*255\s*,\s*255\s*,\s*255\s*,[^)]*\)/g, '')
+      .replace(/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,[^)]*\)/g, '')
+      .replace(/mask-image:[^;]*/g, '')
+      .replace(/-webkit-mask-image:[^;]*/g, '');
+    if (/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/.test(l)) offenders.push(line.trim());
+  });
+  assert.deepEqual(offenders, []);
+});
+
+await test('style.css defines the status and surface color tokens in :root', () => {
+  const root = styleCss.match(/:root \{[\s\S]*?\n\}\n/)[0];
+  for (const t of ['success', 'warning', 'caution', 'danger', 'glow-cool', 'paper', 'on-paper', 'scrim', 'on-accent-track']) {
+    assert.match(root, new RegExp(`--${t}:`), `--${t} should be defined`);
+  }
+  assert.ok(!/var\(--white/.test(styleCss), '--white is never defined and must not be referenced');
+});
+
+await test('copied state styles any result-footer button, not only .primary', () => {
+  assert.match(styleCss, /\.result-footer \.btn\.copied\b/);
+  assert.ok(!/\.btn\.primary\.copied/.test(styleCss), 'copied style must not be limited to .primary');
+});
+
+await test('Enter-key hint is hidden on touch-only devices', () => {
+  const m = styleCss.match(/@media \(hover: none\) and \(pointer: coarse\) \{\s*\.hint \{\s*display: none;/);
+  assert.ok(m, '.hint should be display:none under (hover: none) and (pointer: coarse)');
+});
+
+await test('.share-btn no longer repeats declarations that .btn already provides', () => {
+  const rule = styleCss.match(/\n\.share-btn \{([^}]*)\}/)[1];
+  assert.ok(!/background|border-color/.test(rule), '.share-btn should only override color');
+  assert.ok(!/\.share-btn:hover/.test(styleCss), '.share-btn:hover duplicates .btn:hover');
+});
+
+await test('app.js and index.html have no "ERROR:" prefix, uppercase progress strings or em-dashes in UI copy', () => {
+  assert.ok(!/ERROR:/.test(appSource), 'no ERROR: prefix');
+  assert.ok(!/ENCRYPT|DECRYPT|FAILED/.test(appSource.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/'(?:ENCRYPT|DECRYPT)[A-Z]*'/g, '')),
+    'no all-caps status strings');
+  // Em-dashes (literal or escaped) may only appear in comments.
+  const code = appSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  assert.ok(!/—|\\u2014/.test(code), 'no em-dash in app.js strings');
+  const html = indexHtml.replace(/<!--[\s\S]*?-->/g, '');
+  assert.ok(!/—|&mdash;/.test(html), 'no em-dash in index.html');
+  assert.ok(!/\.\.\./.test(html.replace(/<script[\s\S]*?<\/script>/g, '')), 'use the ellipsis character in placeholders');
+});
+
+await test('app.js user-facing strings use curly apostrophes', () => {
+  const code = appSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  // A straight apostrophe inside a double-quoted string, or n't / 't inside a single-quoted one.
+  assert.ok(!/"[^"\n]*\w'\w[^"\n]*"/.test(code), 'straight apostrophe in a double-quoted string');
+  assert.ok(!/'[^'\n]*\\'[^'\n]*'/.test(code), 'escaped straight apostrophe in a string');
+});
+
+await test('status copy: progress and result strings are sentence case, decrypt failure is exact', () => {
+  for (const s of ['Encrypting\\u2026', 'Decrypting\\u2026', 'Encrypted', 'Decrypted']) {
+    assert.ok(appSource.includes(`setStatus('${s}')`), `missing setStatus('${s}')`);
+  }
+  assert.ok(appSource.includes("setStatus('Couldn\\u2019t decrypt. Double-check the passphrase and try again', 'danger')"));
+});
+
+await test('catch blocks that show a friendly error also console.error the original', () => {
+  const blocks = appSource.match(/catch \((\w+)\) \{[^}]*\}/g) || [];
+  for (const b of blocks.filter(x => /setStatus\([^)]*'danger'\)/.test(x) && /Couldn\\u2019t/.test(x))) {
+    assert.match(b, /console\.error\(/, `catch block should log the original error: ${b.slice(0, 60)}`);
+  }
+});
+
 // Summary
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

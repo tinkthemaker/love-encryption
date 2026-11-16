@@ -635,7 +635,7 @@ the link is a one-tap URL; the QR is the rare in-person case.
   Signal, iMessage, WhatsApp, or email." and explicitly notes
   "QR is for in-person handoff only."
 - `style.css`: New `.qr-btn` rule for the visually de-emphasized QR
-  button (10px font, 32px min-height, muted gray).
+  button (11px font, 36px min-height, muted gray).
 - `tests/test.mjs`: 4 new regression tests:
   - button order is exactly `[Copy, Link, Share, QR]`
   - QR button label includes "in person"
