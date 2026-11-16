@@ -822,6 +822,79 @@ remaining items in Tier 5 are deferred.
 
 ## Changelog (outside the plan)
 
+### 2026-11-16 · Ditherfield (v8)
+
+A second pass on the dither theme. The field is now a full scene instead of a
+backdrop, the chrome follows the active tab, and the app tells the field what
+it is doing. Still zero dependencies. `crypto.js` is untouched.
+
+Commits: `13fb0a3` (app.js FX bridge, version bump), `8fbe5a5` (field and chrome).
+
+**Files:**
+
+- `dither-bg.js`: rewritten. The whole background is a Bayer 8×8 ordered
+  dither: a dot-density sky glow, a large dithered sun, and four seeded
+  ridgelines with slope shading and pointer parallax. In decrypt mode the sun
+  becomes a crescent moon, twinkling stars come out, and the palette cross-fades
+  over 700 ms. The field exposes `window.DitherField.pulse(kind, x, y)`: typing
+  sends a ripple, a scan band runs while the KDF works, a bloom marks a finished
+  result, and errors glitch in coral.
+- Performance: per-column precompute, Uint32 pixel writes, no per-frame
+  allocation. The loop pauses when the page is hidden and drops to about 30 fps
+  when frames run long.
+- Reduced motion: `prefers-reduced-motion` renders one static frame and starts
+  no timer or animation loop.
+- `app.js`: FX bridge. Sets `html[data-mode]` to `encrypt` or `decrypt` on every
+  tab switch, and `html[data-busy]` while the KDF, encrypt or decrypt runs. Sets
+  `--ox` and `--oy` on `#resultOverlay` from the button that produced the result.
+  Calls `DitherField.pulse` with one of five kinds: `key`, `busy`, `done`,
+  `error`, `mode`. Only that kind and a screen position cross the bridge.
+  Message and passphrase content never do. If the field fails to load, the
+  bridge does nothing.
+- `style.css`, `index.html`:
+  - Accent colors are registered with `@property`, so a tab switch tweens them
+    together. Decrypt uses the "tide" palette (periwinkle and aqua) throughout.
+  - The mode switch is docked into the message card with a sliding indicator.
+  - Panels cross-fade and slide in from their tab's side. The inactive panel is
+    `visibility: hidden`, which takes it out of the tab order.
+  - A step thread (01, 02, 03) fills as you type.
+  - The result modal grows out of the button that opened it, and the status chip
+    rises from under the card. On load, each block rises in on a short stagger.
+  - The strength meter is three dithered cells that tween coral, amber, mint.
+  - Explicit transition properties replace `transition: all`. Focus glows are softer.
+  - Markup has no inline styles or scripts, so the page runs under the CSP in
+    `vercel.json`.
+- `version.js`: `APP_VERSION` 7 → 8 (cache `cipher-v8`), so browsers that
+  cached the v7 preview pick up the new shell.
+
+**Fixed from v7:**
+
+- Active tab label was dark on dark and unreadable. It is now white.
+- Decrypt mode was half rose. It is now fully tide.
+- Ridge shading ran per pixel every frame. It is now precomputed per column.
+- Reduced motion ran a 120 ms timer loop. It now draws one static frame.
+- `transition: all` on interactive elements, replaced with explicit properties.
+- Hidden legacy background layers (grid, glow, noise, vignette, scanline) removed.
+
+**Acceptance (to check before merge):**
+
+- [x] `node tests/test.mjs` → 54 passed, 0 failed (run during this write-up)
+- [x] `node --check dither-bg.js` and `node --check app.js` exit 0
+- [x] `crypto.js` has no changes since v7 (`git diff a622186 HEAD -- crypto.js` is empty)
+- [x] Encrypt and decrypt round-trip still works in a browser, including
+      with the `vercel.json` CSP injected
+- [x] Tab switch tweens rose to tide, and the active label is readable
+- [x] Decrypt tab shows the moon and stars
+- [ ] Typing ripples the field; encrypt and decrypt both show the scan band and bloom
+- [ ] Result modal grows from the button that opened it and closes cleanly
+- [x] Strength meter tweens coral, amber, mint
+- [x] With the OS reduce-motion setting on, the field is one static frame
+- [ ] Hidden tab stops the field; returning to it resumes the field
+- [ ] Phone, iOS Safari: field renders without jank, modal animation and
+      safe-area layout look right
+- [ ] Phone, Android Chrome: same checks as iOS Safari
+- [ ] Second visit loads `cipher-v8` and removes `cipher-v7`
+
 ### 2026-11-15 · Dither theme (v7) — `dither-theme` branch
 
 A visual retheme, not a plan item. Style direction: "modern-retro" — the
