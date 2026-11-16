@@ -22,7 +22,7 @@ Inspired by Pearl Jam's *Given to Fly*.
 - **Installable PWA** — Add to your home screen for a native app experience.
 - **Works offline** — Service worker caches everything; no internet needed after first load.
 - **Passphrase strength meter** — Visual feedback on passphrase quality.
-- **Three share paths** — The Copy button (armored block) is the primary path, works in any messenger. Link gives B a one-tap URL. Share uses the system share sheet. QR is reserved for in-person handoff.
+- **Four share paths** — The Copy button (armored block) is the primary path, works in any messenger. Link gives B a one-tap URL. Share uses the system share sheet. QR is reserved for in-person handoff.
 - **One-tap reply** — Decrypted result has a Reply button that prefills the message and passphrase
 - **Diceware passphrase generator** — One click, four random words from the EFF short wordlist (~41 bits of entropy)
 - **Sharable `#d=...` links** — Recipient opens the link, ciphertext preloads into the decrypt tab
