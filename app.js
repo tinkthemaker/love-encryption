@@ -125,6 +125,16 @@
   }
 
   /**
+   * Validation failure: show why, then put the cursor where the fix goes.
+   * On phones the status line can sit below the fold, so focusing the
+   * field is what actually tells the user where to look.
+   */
+  function needs(el, msg) {
+    setStatus(msg, 'danger');
+    el.focus();
+  }
+
+  /**
    * Sets the processing state on action buttons.
    * Disables buttons and shows loading text during crypto operations.
    */
@@ -520,11 +530,11 @@
       // message are encrypted exactly as typed, whitespace included.
       const pass = passEl.value;
       if (!pass.trim()) {
-        return setStatus('Type the passphrase you and B agreed on first', 'danger');
+        return needs(passEl, 'Type the passphrase you and B agreed on first');
       }
       const plaintext = ptEl.value;
       if (!plaintext.trim()) {
-        return setStatus('Type the message you want to protect', 'danger');
+        return needs(ptEl, 'Type the message you want to protect');
       }
       setProcessing(true);
       setStatus('ENCRYPTING...');
@@ -556,17 +566,17 @@
     try {
       const pass = passEl.value;
       if (!pass.trim()) {
-        return setStatus('Type the passphrase you and B agreed on first', 'danger');
+        return needs(passEl, 'Type the passphrase you and B agreed on first');
       }
       const raw = ctEl.value.trim();
       if (!raw) {
-        return setStatus('Paste the encrypted message B sent you', 'danger');
+        return needs(ctEl, 'Paste the encrypted message B sent you');
       }
       let bundle;
       try {
         bundle = parseCiphertext(raw);
       } catch {
-        return setStatus("That doesn't look like a CIPHER message \u2014 check the BEGIN/END markers", 'danger');
+        return needs(ctEl, "That doesn't look like a CIPHER message \u2014 check the BEGIN/END markers");
       }
       setProcessing(true);
       setStatus('DECRYPTING...');

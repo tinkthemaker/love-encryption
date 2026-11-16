@@ -864,6 +864,16 @@ Commits: `13fb0a3` (app.js FX bridge, version bump), `8fbe5a5` (field and chrome
   - Explicit transition properties replace `transition: all`. Focus glows are softer.
   - Markup has no inline styles or scripts, so the page runs under the CSP in
     `vercel.json`.
+- Phones: the field anchors its terrain to the layout (it reads where the
+  passphrase card sits), and a sky window opens above that card, so the sun
+  sets behind it instead of being covered by it. Terrain follows scroll at
+  0.6×. Stars keep clear of the logo, wordmark and version pill. The step
+  thread moves inside the cards' left padding, and the 02 → 03 segment is
+  positioned structurally instead of by a magic offset. At 390×844 the
+  Encrypt button still ends above 800px with no scrolling.
+- `app.js`: a validation error now focuses the field that needs fixing
+  (passphrase, message or ciphertext). On phones the status line can sit
+  below the fold, so the focus is what points the user at the problem.
 - `version.js`: `APP_VERSION` 7 → 8 (cache `cipher-v8`), so browsers that
   cached the v7 preview pick up the new shell.
 
