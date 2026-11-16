@@ -40,6 +40,26 @@
   // Keep the header badge in sync with the real app version.
   if (appVersionEl) appVersionEl.textContent = `v${APP_VERSION}`;
 
+  // --- Ambient FX bridge ---
+  // Purely cosmetic. Tells the dither field (dither-bg.js) and the CSS what
+  // the app is doing so motion can follow the user. Never touches secrets:
+  // only an event kind and a screen position leave this function.
+  const rootEl = document.documentElement;
+  function fx(kind, el) {
+    const field = window.DitherField;
+    if (!field || typeof field.pulse !== 'function') return;
+    let x, y;
+    if (el && el.getBoundingClientRect) {
+      const r = el.getBoundingClientRect();
+      x = r.left + r.width / 2;
+      y = r.top + r.height / 2;
+    }
+    try { field.pulse(kind, x, y); } catch { /* cosmetic only */ }
+  }
+  function activeActionBtn() {
+    return navEncrypt.classList.contains('active') ? encryptBtn : decryptBtn;
+  }
+
   // --- State ---
   let isProcessing = false;
   // Result-mode flags control which extra buttons are visible on the modal.
@@ -96,6 +116,7 @@
     statusEl.textContent = msg;
     statusEl.className = 'status';
     if (type !== 'muted') statusEl.classList.add(type);
+    if (type === 'danger') fx('error', activeActionBtn());
     if (msg) {
       statusEl.classList.add('visible');
     } else {
@@ -111,6 +132,8 @@
     isProcessing = processing;
     encryptBtn.disabled = processing;
     decryptBtn.disabled = processing;
+    rootEl.toggleAttribute('data-busy', processing);
+    if (processing) fx('busy', activeActionBtn());
 
     if (processing) {
       // Store original text and replace with processing indicator
@@ -142,7 +165,14 @@
     const isEncrypted = mode === 'encrypted';
     resultTitleEl.textContent = isEncrypted ? 'Encrypted' : 'Decrypted';
     resultContentEl.value = content;
+    // Let the modal grow out of the button that produced it.
+    const origin = activeActionBtn().getBoundingClientRect();
+    if (origin.width) {
+      resultOverlay.style.setProperty('--ox', `${origin.left + origin.width / 2}px`);
+      resultOverlay.style.setProperty('--oy', `${origin.top + origin.height / 2}px`);
+    }
     resultOverlay.classList.add('active');
+    fx('done', activeActionBtn());
 
     // Auto-expand textarea to fit content
     autoExpandTextarea(resultContentEl);
@@ -362,6 +392,9 @@
     navDecrypt.classList.toggle('active', !isEncrypt);
     navEncrypt.setAttribute('aria-selected', isEncrypt ? 'true' : 'false');
     navDecrypt.setAttribute('aria-selected', isEncrypt ? 'false' : 'true');
+    const prevMode = rootEl.dataset.mode;
+    rootEl.dataset.mode = isEncrypt ? 'encrypt' : 'decrypt';
+    if (prevMode !== rootEl.dataset.mode) fx('mode', isEncrypt ? navEncrypt : navDecrypt);
 
     // Update button labels
     encryptBtn.textContent = 'Encrypt';
@@ -713,6 +746,11 @@
     // Character count on textarea input
     ptEl.addEventListener('input', updateCharCount);
     ctEl.addEventListener('input', updateCharCount);
+
+    // Typing sends a soft ripple through the dither field (position only)
+    for (const el of [passEl, ptEl, ctEl]) {
+      el.addEventListener('input', () => fx('key', el));
+    }
 
     // Modal buttons and overlay
     resultCopyBtn.addEventListener('click', copyResultToClipboard);

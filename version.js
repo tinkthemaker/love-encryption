@@ -10,7 +10,7 @@
  * <script>-loaded files).
  */
 (() => {
-  const APP_VERSION = 7; // bumped: dither theme (style.css, index.html, dither-bg.js)
+  const APP_VERSION = 8; // bumped: dither theme (style.css, index.html, dither-bg.js)
   const CACHE_NAME = `cipher-v${APP_VERSION}`;
 
   // Publish to every common global scope so crypto.js (loaded after us)
