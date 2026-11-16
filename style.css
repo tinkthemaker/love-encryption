@@ -52,8 +52,14 @@
     /* 4px spacing grid */
     --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px;
     --pad: var(--s5);
-    --rail: 18px;          /* thread centre -> card edge */
+    --rail: 18px;          /* desktop: thread centre sits this far outside the card */
     --gutter: 28px;        /* left room for the thread */
+    --tx: calc(-1 * var(--rail));   /* thread centre, relative to the card's padding box */
+    --padl: var(--pad);    /* left padding of the step cards (phones leave room for the rail) */
+    --gap: var(--s4);      /* space between the passphrase card and the compose card */
+    --tabs-h: 53px;        /* docked mode switch: 4 + 44 + 4 + 1 hairline */
+    --foot-h: 36px;        /* the "03" row; the thread's last node is derived from it */
+    --sky: 0px;            /* phones: open sky between the header and the passphrase card */
 
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -283,8 +289,9 @@ h1 {
 }
 
 .settings {
-    padding: var(--pad);
-    margin-bottom: var(--s4);
+    padding: var(--pad) var(--pad) var(--pad) var(--padl);
+    margin-top: var(--sky);
+    margin-bottom: var(--gap);
 }
 
 .settings-header { margin-bottom: var(--s4); }
@@ -326,15 +333,28 @@ h1 {
 
 /* ============================================
    THE THREAD: a dithered line linking 01 -> 02 -> 03
-   Nodes are pseudo-elements; fill is pure CSS via :has()
+   t1 hangs off the passphrase card and bridges the gap to node 02.
+   The 02 -> 03 segment is a pair of pseudo-elements on .message-card
+   that span the grid rows from the top of the compose card down to the
+   03 row, so it ends where the 03 node is (both derive from --foot-h).
    ============================================ */
 
-.thread {
+.thread,
+.message-card::before,
+.message-card::after {
     position: absolute;
-    left: calc(-1 * var(--rail) - 2px);
+    left: calc(var(--tx) - 2px);
     width: 4px;
     pointer-events: none;
+}
+.thread,
+.message-card::before {
     background: repeating-conic-gradient(rgba(255, 255, 255, 0.16) 0% 25%, transparent 0% 50%) 0 0 / 4px 4px;
+}
+.message-card::after {
+    background: repeating-conic-gradient(var(--accent) 0% 25%, color-mix(in srgb, var(--accent) 45%, transparent) 0% 50%) 0 0 / 4px 4px;
+    clip-path: inset(0 0 100% 0);
+    transition: clip-path var(--dur-3) var(--ease-out);
 }
 .thread i {
     position: absolute;
@@ -344,16 +364,40 @@ h1 {
     background: repeating-conic-gradient(var(--accent) 0% 25%, color-mix(in srgb, var(--accent) 45%, transparent) 0% 50%) 0 0 / 4px 4px;
     transition: height var(--dur-3) var(--ease-out);
 }
-.t1 { top: 40px; bottom: calc(-1 * (var(--s4) + 26px)); }
-.t2 { top: 26px; bottom: calc(var(--pad) + 97px); }
+.t1 { top: calc(var(--pad) + 8px); bottom: calc(-1 * (var(--gap) + 2px)); }   /* ends at the compose card's top edge */
 
-/* nodes */
+/* 02 -> 03: grid items spanning field-head..foot-row */
+.message-card {
+    display: grid;
+    grid-template-columns: 0 minmax(0, 1fr);
+}
+.message-card > * { grid-column: 2; }
+.message-card > .field-head { grid-row: 1; }
+.message-card > textarea    { grid-row: 2; }
+.message-card > .foot-row   { grid-row: 3; }
+.message-card > .action-btn { grid-row: 4; }
+.message-card > .hint       { grid-row: 5; }
+.message-card::before,
+.message-card::after {
+    content: '';
+    position: static;
+    grid-column: 1;
+    grid-row: 1 / 4;
+    align-self: stretch;
+    justify-self: start;
+    /* starts at the top edge of the compose card (where t1 ends), ends at the 03 node */
+    margin-left: calc(var(--tx) - 2px - var(--padl));
+    margin-top: calc(-1 * (var(--tabs-h) + var(--pad)));
+    margin-bottom: calc((var(--foot-h) - 1px) / 2);
+}
+
+/* nodes: 01 / 02 sit level with their step labels, 03 with the foot row */
 .settings::before,
-.compose::before,
+.message-card .field-head::before,
 .foot-row::before {
     content: '';
     position: absolute;
-    left: calc(-1 * var(--rail) - 5px);
+    left: calc(var(--tx) - 5px);
     width: 10px;
     height: 10px;
     border-radius: 3px;
@@ -363,12 +407,13 @@ h1 {
     transition: background-color var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
     z-index: 1;
 }
-.settings::before { top: 35px; }
-.compose::before  { top: 21px; }
-.foot-row::before { top: 50%; margin-top: -5px; left: calc(-1 * (var(--pad) + var(--rail) + 6px)); }
+.settings::before { top: calc(var(--pad) + 3px); }
+.message-card .field-head { position: relative; }
+.message-card .field-head::before { top: 3px; left: calc(var(--tx) - 5px - var(--padl)); }
+.foot-row::before { top: calc((var(--foot-h) - 1px) / 2 - 5px); left: calc(var(--tx) - 5px - var(--padl)); }
 
 main:has(#pass:not(:placeholder-shown)) .settings::before,
-main:has(#pass:not(:placeholder-shown)) .compose::before,
+main:has(#pass:not(:placeholder-shown)) .message-card .field-head::before,
 main:has(.tab-content.active textarea:not(:placeholder-shown)) .foot-row::before {
     background: var(--accent);
     border-color: var(--accent);
@@ -376,7 +421,7 @@ main:has(.tab-content.active textarea:not(:placeholder-shown)) .foot-row::before
 }
 
 main:has(#pass:not(:placeholder-shown)) .t1 i { height: 100%; }
-main:has(.tab-content.active textarea:not(:placeholder-shown)) .t2 i { height: 100%; }
+main:has(.tab-content.active textarea:not(:placeholder-shown)) .message-card::after { clip-path: inset(0); }
 
 /* ============================================
    COMPOSE: mode switch docked into the message card
@@ -388,11 +433,14 @@ main:has(.tab-content.active textarea:not(:placeholder-shown)) .t2 i { height: 1
 }
 
 .tabs-nav {
+    --tpl: var(--s1);
+    --tpr: var(--s1);
+    height: var(--tabs-h);
     position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0;
-    padding: var(--s1);
+    padding: var(--s1) var(--tpr) var(--s1) var(--tpl);
     background: var(--surface-0);
     border-bottom: 1px solid var(--border);
     border-radius: calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0;
@@ -403,8 +451,8 @@ main:has(.tab-content.active textarea:not(:placeholder-shown)) .t2 i { height: 1
     z-index: 0;
     top: var(--s1);
     bottom: var(--s1);
-    left: var(--s1);
-    width: calc(50% - var(--s1));
+    left: var(--tpl);
+    width: calc((100% - var(--tpl) - var(--tpr)) / 2);
     border-radius: calc(var(--r-lg) - 5px);
     background-color: color-mix(in srgb, var(--accent) 20%, var(--ink));
     background-image: var(--dither);
@@ -478,7 +526,7 @@ html[data-mode="decrypt"] .tab-content:not(.active) { transform: translateX(-20p
 
 .message-card {
     position: relative;
-    padding: var(--pad);
+    padding: var(--pad) var(--pad) var(--pad) var(--padl);
 }
 
 .message-card .field-head { margin-bottom: var(--s3); }
@@ -523,8 +571,7 @@ textarea:focus::placeholder { opacity: 0.45; }
     justify-content: space-between;
     gap: var(--s3);
     margin-top: var(--s3);
-    padding-top: var(--s3);
-    min-height: 32px;
+    height: var(--foot-h);
     border-top: 1px dashed var(--border);
 }
 .char-count {
@@ -700,10 +747,27 @@ input:focus {
     from { -webkit-mask-position: 130% 0; mask-position: 130% 0; }
     to   { -webkit-mask-position: -30% 0;  mask-position: -30% 0; }
 }
+/* the fill drains into a marching dither while the KDF runs; the label stays
+   crisp on top and a brighter band sweeps across */
+@keyframes march {
+    from { background-position: 0 0; }
+    to   { background-position: 8px 0; }
+}
+@keyframes busy-glow {
+    0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 1px var(--accent-line), 0 6px 22px -8px var(--accent-glow); }
+    50%      { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 1px var(--accent-line), 0 6px 30px -4px var(--accent-glow); }
+}
 .action-btn.processing {
     cursor: wait;
-    filter: saturate(0.85) brightness(0.92);
-    transition: filter var(--dur-2) var(--ease-out);
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    background-color: color-mix(in srgb, var(--accent) 34%, var(--ink));
+    background-image: var(--dither);
+    background-size: 4px 4px;
+    filter: none;
+    transform: none;
+    animation: march 520ms steps(2) infinite, busy-glow 1.05s var(--ease-out) infinite;
+    transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out);
 }
 .action-btn.processing::after {
     animation: scan 1.05s linear infinite;
@@ -772,6 +836,11 @@ input:focus {
     50%      { box-shadow: 0 0 0 4px var(--accent-soft); }
 }
 
+@media (hover: hover) {
+    .settings:hover,
+    .compose:hover { border-color: var(--border-strong); }
+}
+
 /* ============================================
    FOCUS RINGS: soft accent glows, never hard boxes
    ============================================ */
@@ -805,7 +874,7 @@ textarea:focus-visible { box-shadow: none; }
     gap: var(--s2);
     width: fit-content;
     max-width: 100%;
-    margin: -12px 0 0 var(--s4);
+    margin: -12px 0 0 var(--padl);
     padding: var(--s5) var(--s3) var(--s2) var(--s3);
     min-height: 0;
     border: 1px solid var(--border);
@@ -846,6 +915,14 @@ textarea:focus-visible { box-shadow: none; }
 }
 .status.success { --dot: var(--mint); color: var(--text); }
 .status.danger  { --dot: var(--coral); color: #ffb4aa; border-color: rgba(255, 107, 90, 0.3); }
+/* an error also tints the card it came from, then settles with the chip */
+main:has(.status.danger.visible) .compose {
+    border-color: rgba(255, 107, 90, 0.45);
+    box-shadow:
+        inset 0 1px 0 var(--hairline-top),
+        0 0 0 3px rgba(255, 107, 90, 0.12),
+        0 16px 40px -16px rgba(0, 0, 0, 0.6);
+}
 /* the status chip reserves its own height only when shown; keep
    a little air above the footer either way */
 .status.visible + .footer { margin-top: var(--s6); }
@@ -951,7 +1028,7 @@ textarea:focus-visible { box-shadow: none; }
     color: #ffffff;
 }
 .result-card textarea::selection {
-    background: color-mix(in srgb, var(--accent) 48%, var(--ink));
+    background: color-mix(in srgb, var(--accent) 30%, var(--surface-2));
     color: #ffffff;
 }
 
@@ -1128,9 +1205,34 @@ textarea:focus-visible { box-shadow: none; }
     textarea { min-height: 176px; }
 }
 
+/* Phones: the passphrase card is the ground the sun sets behind. Open a sky
+   window above it, and move the thread inside the cards' left padding. */
+@media (max-width: 480px) {
+    :root {
+        --gutter: 16px;
+        --tx: 13px;
+        --padl: 30px;
+        --gap: var(--s3);
+        /* tall phones get a big sky; short ones keep both inputs on screen */
+        --sky: 40px;
+        --sky: clamp(40px, calc(55vh - 320px), 180px);
+        --sky: clamp(40px, calc(55dvh - 320px), 180px);
+    }
+    main { padding-right: var(--gutter); }
+    /* the mode switch lines up with the inputs; the rail runs down its left margin */
+    .tabs-nav { --tpl: var(--padl); --tpr: var(--pad); }
+    header { padding: var(--s3) 0; }
+    .settings-header { margin-bottom: var(--s3); }
+    textarea { min-height: 112px; }
+    .message-card .field-head { margin-bottom: var(--s2); }
+    .foot-row { margin-top: var(--s2); }
+    .hint { display: none; }
+    .footer { margin-top: var(--s6); }
+}
+@media (hover: none) { .hint { display: none; } }
+
 @media (max-width: 380px) {
-    :root { --gutter: 24px; --rail: 15px; --pad: 16px; }
-    main { padding-right: 12px; }
+    :root { --gutter: 12px; --rail: 15px; --pad: 16px; --padl: 28px; --tx: 12px; }
     h1 { font-size: 18px; }
     .tab-btn { padding-inline: var(--s2); }
     #strength::before { width: 96px; -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 28px, transparent 28px 32px); mask-image: repeating-linear-gradient(90deg, #000 0 28px, transparent 28px 32px); }
@@ -1138,6 +1240,7 @@ textarea:focus-visible { box-shadow: none; }
 }
 
 @media (max-height: 500px) and (orientation: landscape) {
+    :root { --sky: 0px; }
     header { padding: var(--s3) 0; }
     .settings { margin-bottom: var(--s3); }
     textarea { min-height: 96px; }
@@ -1174,8 +1277,8 @@ textarea:focus-visible { box-shadow: none; }
     .tab-indicator::after { display: none; }
     .action-btn::after, .footer-line { display: none; }
     .result-overlay { background: #050508; }
-    .thread { background: rgba(255, 255, 255, 0.35); }
-    .thread i { background: var(--accent); }
+    .thread, .message-card::before { background: rgba(255, 255, 255, 0.35); }
+    .thread i, .message-card::after { background: var(--accent); }
 }
 
 @media (forced-colors: active) {
