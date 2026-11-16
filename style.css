@@ -1,24 +1,27 @@
 /* ============================================
-   CIPHER // Secure Message Encryption
-   Dark refresh — soft surfaces, rose accent, modern type
+   CIPHER // dither theme
+   ditherdance x Browserbase: no blur, no smooth
+   gradients — every fade is Bayer-dithered.
+   Drop-in replacement for style.css (same DOM).
+   Plus dither-bg.js (canvas field + mountains).
    ============================================ */
 
-/* --- Global Variables --- */
 :root {
-    /* Neutral ramp (dark, slightly cool) */
+    /* Neutral ramp (near-black, slightly cool) */
     --bg:        #0a0b0f;
-    --surface-1: #101219;   /* base panel */
-    --surface-2: #161922;   /* raised panel / inputs */
-    --surface-3: #1e2230;   /* hover / tracks */
+    --surface-1: #101219;
+    --surface-2: #161922;
+    --surface-3: #1e2230;
     --border:    #262b39;
     --border-strong: #39415a;
 
-    /* Text (all pass WCAG AA on --bg) */
+    /* Text */
     --text:   #f3f5fa;
-    --muted:  #aab2c5;      /* secondary text / labels */
-    --dim:    #838ca3;      /* least-important text, still legible */
+    --muted:  #aab2c5;
+    --dim:    #838ca3;
 
-    /* Rose accent (nods to the "love" theme) */
+    /* Rose ramp — this IS the dither palette:
+       ordered-dithered from bg to accent, never blended */
     --accent:        #ff5d8f;
     --accent-hover:  #ff7ba6;
     --accent-press:  #eb406f;
@@ -33,10 +36,11 @@
     --safe-top: env(safe-area-inset-top);
     --safe-bottom: env(safe-area-inset-bottom);
 
-    /* Elevation */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.45);
-    --shadow-accent: 0 6px 20px var(--accent-glow);
+    /* Dither texture (used by fills, bars, buttons) */
+    --dither-tex:
+        repeating-conic-gradient(rgba(255, 93, 143, 0.28) 0% 25%, transparent 0% 50%);
+    --dither-tex-dense:
+        repeating-conic-gradient(rgba(255, 93, 143, 0.55) 0% 25%, transparent 0% 50%);
 
     /* Animation */
     --transition-fast: 0.15s ease;
@@ -45,6 +49,7 @@
     /* Typography */
     --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, Helvetica, Arial, sans-serif;
     --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+    --font-pixel: 'Departure Mono', 'Press Start 2P', var(--font-mono);
 
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
@@ -54,22 +59,16 @@
     color-scheme: dark;
 }
 
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
-[hidden] {
-    display: none !important;
-}
-
-/* --- Base Styles (Mobile-First) --- */
+/* --- Base --- */
 body {
     margin: 0;
     padding: var(--safe-top) 0 calc(24px + var(--safe-bottom));
     background-color: var(--bg);
     color: var(--text);
     font: 16px/1.6 var(--font-ui);
-    letter-spacing: 0;
     overflow-x: hidden;
     min-height: 100vh;
     min-height: 100dvh;
@@ -83,7 +82,6 @@ main {
     z-index: 2;
 }
 
-/* Eyebrow / small caps label helper */
 .eyebrow,
 label,
 .settings-title {
@@ -95,119 +93,50 @@ label,
 }
 
 /* ============================================
-   BACKGROUND SYSTEM
+   BACKGROUND SYSTEM — dithered, not blurred
    ============================================ */
 
-.bg-grid {
+/* The canvas field: dither-gradient sky + dithered
+   mountains + pointer light. Drawn by dither-bg.js. */
+#ditherField {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
     z-index: 0;
     pointer-events: none;
-    background-image:
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 32px 32px;
-    mask-image: radial-gradient(ellipse 100% 70% at 50% 100%, black 20%, transparent 70%);
-    -webkit-mask-image: radial-gradient(ellipse 100% 70% at 50% 100%, black 20%, transparent 70%);
-    transform: perspective(400px) rotateX(55deg);
-    transform-origin: center bottom;
-    animation: grid-scroll 20s linear infinite;
+    image-rendering: pixelated;
 }
 
-@keyframes grid-scroll {
-    0% { background-position: 0 0; }
-    100% { background-position: 0 32px; }
+/* Old glow/noise layers are retired — the canvas
+   replaces them. Kept in the DOM, hidden here. */
+.bg-grid,
+.bg-glow,
+.bg-noise,
+.bg-vignette {
+    display: none;
 }
 
-.bg-glow {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(90px);
-    opacity: 0.5;
-    pointer-events: none;
-    z-index: 0;
-    will-change: transform;
-}
-
-.bg-glow-1 {
-    width: min(340px, 85vw);
-    height: min(340px, 85vw);
-    background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
-    top: -18%;
-    left: -18%;
-    animation: glow-float-1 25s ease-in-out infinite;
-}
-
-.bg-glow-2 {
-    width: min(280px, 65vw);
-    height: min(280px, 65vw);
-    background: radial-gradient(circle, #5c7bff 0%, transparent 70%);
-    bottom: -12%;
-    right: -12%;
-    animation: glow-float-2 30s ease-in-out infinite;
-}
-
-@keyframes glow-float-1 {
-    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.28; }
-    25% { transform: translate(10vw, 8vh) scale(1.15); opacity: 0.18; }
-    50% { transform: translate(8vw, 20vh) scale(0.9); opacity: 0.34; }
-    75% { transform: translate(-3vw, 12vh) scale(1.05); opacity: 0.22; }
-}
-
-@keyframes glow-float-2 {
-    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.22; }
-    33% { transform: translate(-10vw, -12vh) scale(1.2); opacity: 0.14; }
-    66% { transform: translate(-15vw, -6vh) scale(0.85); opacity: 0.28; }
-}
-
+/* Scanlines stay — they sit ON the dither field
+   like a CRT over print. Subtler than before. */
 .bg-scanlines {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
     z-index: 1;
     pointer-events: none;
     background: repeating-linear-gradient(
         0deg,
         transparent 0px,
         transparent 2px,
-        rgba(0, 0, 0, 0.14) 2px,
-        rgba(0, 0, 0, 0.14) 3px
+        rgba(0, 0, 0, 0.10) 2px,
+        rgba(0, 0, 0, 0.10) 3px
     );
     opacity: 0.5;
 }
 
-.bg-noise {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-    pointer-events: none;
-    opacity: 0.02;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-}
-
-.bg-vignette {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-    pointer-events: none;
-    background: radial-gradient(ellipse at center, transparent 0%, transparent 55%, rgba(0,0,0,0.55) 100%);
-}
-
 @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
+    *, *::before, *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
@@ -215,14 +144,14 @@ label,
 }
 
 /* ============================================
-   HEADER
+   HEADER — sits over the dithered mountains
    ============================================ */
 
 header {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 22px 0 18px;
+    padding: 24px 0 16px;
     margin-bottom: 20px;
     border-bottom: 1px solid var(--border);
 }
@@ -233,27 +162,21 @@ header {
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    background: linear-gradient(150deg, var(--accent) 0%, var(--accent-press) 100%);
-    border-radius: 11px;
+    background: var(--dither-tex);
+    background-size: 3px 3px;
+    border-radius: 0;                 /* pixel corners */
     padding: 8px;
-    box-shadow: var(--shadow-accent);
+    border: 1px solid var(--accent);
+    animation: ditherDrift 6s linear infinite;
 }
 
-.logo-icon svg {
-    width: 100%;
-    height: 100%;
-}
+.logo-icon svg { width: 100%; height: 100%; }
+.logo-icon svg rect[fill="white"] { fill: var(--on-accent); }
+.logo-icon svg rect[stroke="white"] { stroke: var(--on-accent); }
+.logo-icon svg rect[fill="black"] { fill: var(--accent); }
 
-.logo-icon svg rect[fill="white"] {
-    fill: var(--on-accent);
-}
-
-.logo-icon svg rect[stroke="white"] {
-    stroke: var(--on-accent);
-}
-
-.logo-icon svg rect[fill="black"] {
-    fill: var(--accent);
+@keyframes ditherDrift {
+    to { background-position: 12px 12px; }
 }
 
 h1 {
@@ -266,15 +189,15 @@ h1 {
 }
 
 .version {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--dim);
     margin-left: auto;
     letter-spacing: 1px;
     font-weight: 600;
-    font-family: var(--font-mono);
+    font-family: var(--font-pixel);
     padding: 3px 8px;
     border: 1px solid var(--border);
-    border-radius: var(--radius-pill);
+    border-radius: 0;
 }
 
 /* ============================================
@@ -287,17 +210,15 @@ h1 {
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .settings {
     margin-bottom: 16px;
-    padding: 18px;
+    padding: 20px;
 }
 
-.settings-header {
-    margin-bottom: 14px;
-}
+.settings-header { margin-bottom: 16px; }
 
 .settings-subtitle {
     margin: 7px 0 0;
@@ -315,18 +236,16 @@ h1 {
     align-items: center;
 }
 
-.passphrase-actions .btn-subtle {
-    flex: 1;
-}
+.passphrase-actions .btn-subtle { flex: 1; }
 
 .settings-content {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
 }
 
 .message-card {
-    padding: 18px;
+    padding: 20px;
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
@@ -355,7 +274,7 @@ input {
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 14px 52px 14px 15px;
+    padding: 12px 48px 12px 14px;
     font-size: 16px;
     font-family: var(--font-mono);
     outline: none;
@@ -372,12 +291,16 @@ input:focus {
     box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* Pixel-eye toggle: 40px square, optically centered in the input.
+   The icon is rect-based (crispEdges), so no blur, no anti-aliasing. */
 .pass-toggle {
     position: absolute;
-    right: 5px;
-    top: 7px;
-    width: 44px;
-    height: 44px;
+    right: 4px;
+    /* anchor to the input row (16px font + 12px padding = 45px);
+       40px button centered => 2px top offset */
+    top: 2px;
+    width: 40px;
+    height: 40px;
     background: transparent;
     border: none;
     color: var(--dim);
@@ -390,6 +313,12 @@ input:focus {
 
 .pass-toggle:hover {
     color: var(--text);
+    background: var(--surface-3);
+}
+
+/* hover ink: dither weave, like everything else */
+.pass-toggle:hover svg {
+    background-image: none;
 }
 
 .pass-toggle svg {
@@ -397,14 +326,18 @@ input:focus {
     height: 20px;
 }
 
+/* open eye = solid bands; the toggle mirrors the field state:
+   typed = ink, hidden = dashes */
+.pass-toggle svg rect { fill: currentColor; }
+
 .pass-toggle .eye-open { display: block; }
 .pass-toggle .eye-closed { display: none; }
 .pass-toggle.showing .eye-open { display: none; }
 .pass-toggle.showing .eye-closed { display: block; }
 
-/* --- Passphrase strength: segmented bar + label --- */
+/* --- Passphrase strength: dithered ink bar --- */
 #strength {
-    margin-top: 10px;
+    margin-top: 12px;
     height: 18px;
     display: flex;
     align-items: center;
@@ -415,54 +348,54 @@ input:focus {
     font-weight: 600;
 }
 
-/* the bar track */
+/* Track + dithered fill. The fill is a Bayer-style
+   conic pattern in the ramp color, not a gradient —
+   "denser ink" reads as "stronger". */
 #strength::before {
     content: '';
     flex: 0 0 auto;
     width: 108px;
-    height: 6px;
+    height: 8px;
     border-radius: var(--radius-pill);
     background: var(--surface-3);
-    /* fill portion is overlaid via background gradient below */
-    background-image: linear-gradient(90deg, var(--fill-color, transparent) var(--fill, 0%), transparent 0);
-    background-repeat: no-repeat;
-    /* carve the track into 4 segments */
+    background-image: var(--fill-tex, none);
+    background-size: 3px 3px;
+    background-repeat: repeat;
     -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 24px, transparent 24px 28px);
     mask-image: repeating-linear-gradient(90deg, #000 0 24px, transparent 24px 28px);
-    transition: none;
 }
 
-/* the text label */
+/* Ink width via a mask on the pattern itself */
+#strength.weak::before {
+    --fill-tex: repeating-conic-gradient(#ff8a5c 0% 25%, transparent 0% 50%);
+    -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 24px, transparent 24px 28px),
+        linear-gradient(90deg, #000 0 33%, transparent 33%);
+    -webkit-mask-composite: source-in;
+    mask-image: repeating-linear-gradient(90deg, #000 0 24px, transparent 24px 28px),
+        linear-gradient(90deg, #000 0 33%, transparent 33%);
+    mask-composite: intersect;
+}
+#strength.weak::after { content: 'Weak'; color: #ff8a5c; }
+
+#strength.medium::before {
+    --fill-tex: repeating-conic-gradient(#ffd166 0% 25%, transparent 0% 50%);
+    -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 24px, transparent 24px 28px),
+        linear-gradient(90deg, #000 0 66%, transparent 66%);
+    -webkit-mask-composite: source-in;
+    mask-image: repeating-linear-gradient(90deg, #000 0 24px, transparent 24px 28px),
+        linear-gradient(90deg, #000 0 66%, transparent 66%);
+    mask-composite: intersect;
+}
+#strength.medium::after { content: 'Medium'; color: #ffd166; }
+
+#strength.strong::before {
+    --fill-tex: repeating-conic-gradient(#4ade9b 0% 25%, transparent 0% 50%);
+}
+#strength.strong::after { content: 'Strong'; color: #4ade9b; }
+
 #strength::after {
     content: '';
     color: var(--dim);
-}
-
-#strength.weak {
-    --fill: 33%;
-    --fill-color: #ff8a5c;
-}
-#strength.weak::after {
-    content: 'Weak';
-    color: #ff8a5c;
-}
-
-#strength.medium {
-    --fill: 66%;
-    --fill-color: #ffd166;
-}
-#strength.medium::after {
-    content: 'Medium';
-    color: #ffd166;
-}
-
-#strength.strong {
-    --fill: 100%;
-    --fill-color: #4ade9b;
-}
-#strength.strong::after {
-    content: 'Strong';
-    color: #4ade9b;
 }
 
 textarea {
@@ -485,12 +418,10 @@ textarea::placeholder {
     transition: opacity var(--transition-fast);
 }
 
-textarea:focus::placeholder {
-    opacity: 0.4;
-}
+textarea:focus::placeholder { opacity: 0.4; }
 
 /* ============================================
-   BUTTONS AND TABS
+   BUTTONS AND TABS — dither fills, not glow
    ============================================ */
 
 .tabs-nav {
@@ -519,6 +450,7 @@ textarea:focus::placeholder {
     cursor: pointer;
     transition: all var(--transition-fast);
     min-height: 44px;
+    position: relative;
 }
 
 .tab-btn:hover {
@@ -526,15 +458,41 @@ textarea:focus::placeholder {
     background: var(--surface-3);
 }
 
+/* Active tab: rose ink, ordered-dithered — the
+   pattern densifies on hover, denser still pressed */
 .tab-btn.active {
     color: var(--on-accent);
-    background: var(--accent);
-    box-shadow: var(--shadow-accent);
+    background-image: var(--dither-tex);
+    background-size: 2px 2px;
+    box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-.tab-content {
-    display: none;
+.tab-btn.active:hover {
+    background-image: var(--dither-tex-dense);
+    background-size: 2px 2px;
 }
+
+.tab-btn.active:active {
+    background-image:
+        repeating-conic-gradient(rgba(255, 93, 143, 0.8) 0% 25%, transparent 0% 50%);
+    background-size: 2px 2px;
+}
+
+/* Decrypt tab ink runs blue-dithered when active */
+.tab-btn.decrypt.active {
+    color: var(--on-accent);
+    background-image:
+        repeating-conic-gradient(rgba(92, 123, 255, 0.32) 0% 25%, transparent 0% 50%);
+    background-size: 2px 2px;
+    box-shadow: inset 0 0 0 1px #5c7bff;
+}
+.tab-btn.decrypt.active:hover {
+    background-image:
+        repeating-conic-gradient(rgba(92, 123, 255, 0.6) 0% 25%, transparent 0% 50%);
+    background-size: 2px 2px;
+}
+
+.tab-content { display: none; }
 
 .tab-content.active {
     display: block;
@@ -546,13 +504,15 @@ textarea:focus::placeholder {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Primary action button — solid rose at rest,
+   dither weave on hover/press */
 .action-btn {
     width: 100%;
     appearance: none;
     border: none;
     border-radius: var(--radius-sm);
     padding: 16px;
-    margin-top: 16px;
+    margin-top: 14px;
     font-size: 13px;
     font-family: var(--font-ui);
     font-weight: 700;
@@ -563,12 +523,15 @@ textarea:focus::placeholder {
     background: var(--accent);
     color: var(--on-accent);
     min-height: 52px;
-    box-shadow: var(--shadow-accent);
+    position: relative;
 }
 
 .action-btn:hover {
     background: var(--accent-hover);
+    background-image: var(--dither-tex);
+    background-size: 3px 3px;
     transform: translateY(-1px);
+    box-shadow: none;
 }
 
 .action-btn:active {
@@ -579,19 +542,18 @@ textarea:focus::placeholder {
 .hint {
     display: block;
     text-align: center;
-    font-size: 11px;
+    font-size: 9px;
     color: var(--dim);
     letter-spacing: 0.5px;
     text-transform: none;
-    margin-top: 10px;
+    margin-top: 12px;
     opacity: 0;
     transition: opacity var(--transition-normal);
+    font-family: var(--font-pixel);
 }
 
 .message-card:hover .hint,
-.message-card:focus-within .hint {
-    opacity: 1;
-}
+.message-card:focus-within .hint { opacity: 1; }
 
 .btn {
     appearance: none;
@@ -649,25 +611,27 @@ textarea:focus::placeholder {
     font-size: 11px;
     color: var(--dim);
     letter-spacing: 0.3px;
-    margin-top: 6px;
+    margin-top: 8px;
     min-height: 14px;
     font-family: var(--font-mono);
 }
 
+/* Processing: dithered dissolve instead of spinner */
 .action-btn.processing {
-    opacity: 0.7;
     cursor: wait;
-    position: relative;
     color: transparent;
+    position: relative;
+    background: var(--accent);
+    background-image: var(--dither-tex);
+    background-size: 3px 3px;
+    animation: ditherDrift 0.8s linear infinite;
 }
 
 .action-btn.processing::after {
     content: '';
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 18px;
-    height: 18px;
+    top: 50%; left: 50%;
+    width: 18px; height: 18px;
     margin: -9px 0 0 -9px;
     border: 2px solid rgba(10, 11, 15, 0.35);
     border-top-color: var(--on-accent);
@@ -675,9 +639,7 @@ textarea:focus::placeholder {
     animation: spin 0.6s linear infinite;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ============================================
    RESULT MODAL
@@ -708,11 +670,9 @@ textarea:focus::placeholder {
 .result-card {
     width: 100%;
     max-width: 480px;
-    /* auto margins center the card when it fits and keep it fully
-       scrollable (top reachable) when it is taller than the viewport */
     margin: auto;
-    padding: 22px;
-    box-shadow: var(--shadow-md);
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
     transform: translateY(16px) scale(0.98);
     opacity: 0;
     transition: transform var(--transition-normal), opacity var(--transition-normal);
@@ -724,7 +684,7 @@ textarea:focus::placeholder {
 }
 
 .result-card h2 {
-    margin: 0 0 14px;
+    margin: 0 0 16px;
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
@@ -757,24 +717,29 @@ textarea:focus::placeholder {
     gap: 10px;
 }
 
-.result-actions .btn {
-    flex: 1;
-}
+.result-actions .btn { flex: 1; }
 
+/* Primary in modal: dither weave, densify on hover */
 .result-footer .btn.primary {
-    background: var(--accent);
+    background-color: var(--accent);
+    background-image: var(--dither-tex);
+    background-size: 3px 3px;
     color: var(--on-accent);
     border-color: var(--accent);
-    box-shadow: var(--shadow-accent);
+    animation: ditherDrift 8s linear infinite;
 }
 
 .result-footer .btn.primary:hover {
-    background: var(--accent-hover);
+    background-image: var(--dither-tex-dense);
+    background-color: var(--accent-hover);
     border-color: var(--accent-hover);
 }
 
 .result-footer .btn.primary.copied {
     background: #4ade9b;
+    background-image:
+        repeating-conic-gradient(rgba(10, 11, 15, 0.25) 0% 25%, transparent 0% 50%);
+    background-size: 3px 3px;
     border-color: #4ade9b;
     box-shadow: none;
 }
@@ -807,12 +772,8 @@ textarea:focus::placeholder {
     border-color: var(--border-strong);
 }
 
-/* Hide Share button when Web Share API is unavailable */
-.no-share-api .share-btn {
-    display: none;
-}
+.no-share-api .share-btn { display: none; }
 
-/* --- QR Code Display (on result modal, when toggled on) --- */
 .result-qr-wrap {
     display: flex;
     flex-direction: column;
@@ -820,7 +781,7 @@ textarea:focus::placeholder {
     gap: 10px;
     margin-top: 14px;
     padding: 16px;
-    background: var(--white, #ffffff);
+    background: #ffffff;
     border-radius: var(--radius-sm);
 }
 
@@ -841,9 +802,8 @@ textarea:focus::placeholder {
     color: var(--muted);
     border-color: var(--border);
 }
-.qr-btn:hover {
-    color: var(--text);
-}
+
+.qr-btn:hover { color: var(--text); }
 
 .result-qr-caption {
     margin: 0;
@@ -854,7 +814,6 @@ textarea:focus::placeholder {
     opacity: 0.7;
 }
 
-/* --- Result hint (the "how to send this" line under the textarea) --- */
 .result-hint {
     margin: 14px 0 0;
     font-size: 13px;
@@ -885,29 +844,31 @@ textarea:focus::placeholder {
     gap: 8px;
 }
 
+/* Status dot: a 2x2 dither cell, not a circle */
 .status::before {
     content: '';
     flex: 0 0 auto;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 0;
     background: var(--muted);
+    background-image:
+        repeating-conic-gradient(rgba(255,255,255,0.5) 0% 25%, transparent 0% 50%);
+    background-size: 2px 2px;
 }
 
-.status.visible {
-    opacity: 1;
-}
+.status.visible { opacity: 1; }
 
-.status.danger {
-    color: #ff8a9c;
-}
-
+.status.danger { color: #ff8a9c; }
 .status.danger::before {
     background: var(--accent);
+    background-image:
+        repeating-conic-gradient(rgba(255,255,255,0.6) 0% 25%, transparent 0% 50%);
+    background-size: 2px 2px;
 }
 
 .footer {
-    margin-top: 28px;
+    margin-top: 32px;
     text-align: center;
 }
 
@@ -926,16 +887,18 @@ textarea:focus::placeholder {
     text-transform: uppercase;
     border-radius: var(--radius-sm);
 }
-.footer-link:hover {
-    color: var(--text);
-}
 
+.footer-link:hover { color: var(--text); }
+
+/* Footer divider: a dithered ramp, not a gradient */
 .footer-line {
-    width: 48px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    width: 64px;
+    height: 6px;
     margin: 0 auto 16px;
     border-radius: var(--radius-pill);
+    background-image: var(--dither-tex);
+    background-size: 2px 2px;
+    animation: ditherDrift 12s linear infinite;
 }
 
 .dedication {
@@ -948,11 +911,11 @@ textarea:focus::placeholder {
 
 .tech-info {
     color: var(--dim);
-    font-size: 10px;
+    font-size: 9px;
     margin: 0;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    font-family: var(--font-mono);
+    font-family: var(--font-pixel);
 }
 
 /* ============================================
@@ -966,9 +929,7 @@ textarea:focus::placeholder {
     96% { transform: translate(-1px, 0); opacity: 0.8; }
 }
 
-h1:hover {
-    animation: glitch 0.4s ease-in-out;
-}
+h1:hover { animation: glitch 0.4s ease-in-out; }
 
 /* ============================================
    UTILITIES
@@ -984,71 +945,35 @@ h1:hover {
     color: var(--on-accent);
 }
 
-::-webkit-scrollbar {
-    width: 10px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
     background: var(--surface-3);
     border-radius: var(--radius-pill);
     border: 2px solid transparent;
     background-clip: padding-box;
 }
-
 ::-webkit-scrollbar-thumb:hover {
     background: var(--border-strong);
     background-clip: padding-box;
 }
 
 /* ============================================
-   RESPONSIVE - Small Screens
+   RESPONSIVE
    ============================================ */
 
 @media (max-width: 380px) {
-    main {
-        padding: 0 12px;
-    }
-
-    h1 {
-        font-size: 15px;
-        letter-spacing: 2px;
-    }
-
-    .tab-btn {
-        padding: 11px 8px;
-        font-size: 11px;
-    }
-
-    #strength::before {
-        width: 88px;
-    }
+    main { padding: 0 12px; }
+    h1 { font-size: 15px; letter-spacing: 2px; }
+    .tab-btn { padding: 11px 8px; font-size: 11px; }
+    #strength::before { width: 88px; }
 }
 
-/* ============================================
-   RESPONSIVE - Landscape
-   ============================================ */
-
 @media (max-height: 500px) and (orientation: landscape) {
-    header {
-        padding: 12px 0;
-        margin-bottom: 12px;
-    }
-
-    .settings {
-        margin-bottom: 12px;
-    }
-
-    textarea {
-        min-height: 100px;
-    }
-
-    .footer {
-        margin-top: 16px;
-    }
+    header { padding: 12px 0; margin-bottom: 12px; }
+    .settings { margin-bottom: 12px; }
+    textarea { min-height: 100px; }
+    .footer { margin-top: 16px; }
 }
 
 /* ============================================
@@ -1062,7 +987,11 @@ h1:hover {
         --muted: #d5dae6;
         --dim: #b6bdcd;
     }
-    input, .btn, .tab-btn, .settings, .message-card {
-        border-width: 1px;
+    input, .btn, .tab-btn, .settings, .message-card { border-width: 1px; }
+    /* Solid fills read better than dither under high contrast */
+    .tab-btn.active,
+    .action-btn,
+    .result-footer .btn.primary {
+        background-image: none;
     }
 }

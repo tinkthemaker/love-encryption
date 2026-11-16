@@ -15,6 +15,7 @@ const APP_SHELL = [
   './',
   './index.html',
   './style.css',
+  './dither-bg.js',
   './app.js',
   './crypto.js',
   './version.js',
@@ -28,7 +29,7 @@ const APP_SHELL = [
 // request pathname so query strings (`/app.js?v=2`) and the bare root
 // navigation are handled too. Suffix matching missed both.
 const NETWORK_FIRST_PATHS = new Set(
-  ['./', './index.html', './style.css', './app.js', './crypto.js', './version.js', './vendor/qrcode.js', './vendor/wordlist.js']
+  ['./', './index.html', './style.css', './dither-bg.js', './app.js', './crypto.js', './version.js', './vendor/qrcode.js', './vendor/wordlist.js']
     .map(file => new URL(file, self.location.href).pathname),
 );
 

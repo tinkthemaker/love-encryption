@@ -820,4 +820,49 @@ remaining items in Tier 5 are deferred.
 
 ---
 
+## Changelog (outside the plan)
+
+### 2026-11-15 · Dither theme (v7) — `dither-theme` branch
+
+A visual retheme, not a plan item. Style direction: "modern-retro" — the
+Linear/Vercel dark-minimal vocabulary with ordered-dithering (Bayer 8×8)
+as the texture engine, in the lineage of [dither-kit](https://www.tripwire.sh/dither-kit),
+[dither.dance](https://dither.dance), and
+[React Bits' Dither background](https://reactbits.dev/backgrounds/dither).
+Zero dependencies preserved — the dither field is a hand-rolled `<canvas>`
+field, no shaders, no frameworks (see the non-goals above; nothing violated).
+
+**Files:**
+
+- `style.css` — full retheme. Blur-glow background layers retired; buttons,
+  tabs, strength bar, status dot, footer divider, and processing state now
+  use ordered-dither fills (CSS `repeating-conic-gradient` patterns) that
+  densify on hover/press. `prefers-contrast: high` falls back to solid fills.
+- `dither-bg.js` — new. ~90-line `#ditherField` canvas: name-hashed
+  rose-palette sky rendered as a Bayer 8×8 ordered dither, two deterministic
+  dithered mountain silhouettes, pointer-reactive light with springy lag.
+  Honors `prefers-reduced-motion` (freezes the field). No network, no deps.
+- `index.html` — `#ditherField` canvas added, script tag added; the
+  password-visibility toggle's stroke-based eye icons (anti-aliased, 24×24)
+  replaced with rect-based pixel-eye icons (crispEdges, 16×16) matching the
+  pixel lock logo: visible = solid ink bands, hidden = dashed dithered lid.
+- `version.js` — `APP_VERSION` 6 → 7 (cache invalidation: `cipher-v7`).
+- `service-worker.js` — `dither-bg.js` added to `APP_SHELL` and
+  `NETWORK_FIRST_PATHS`.
+- Spacing pass to a 4px grid: cards 20px, result card 24px, input padding
+  `12px 48px 12px 14px`, eye toggle 40×40 at 2px top / 4px right
+  (measured optically centered against the 45px input row).
+
+**Acceptance (verified on `localhost` before commit):**
+
+- [x] Encrypt/decrypt round-trip unaffected (`-----BEGIN SECRET MESSAGE-----`
+      armored block unchanged; crypto.js untouched)
+- [x] Strength meter classes (`weak`/`medium`/`strong`) still applied
+- [x] Eye toggle flips `.showing`, input `password` ⇄ `text`, rects render
+- [x] `#ditherField` renders dithered sky + mountains, animates, reacts to
+      pointer; freezes under `prefers-reduced-motion`
+- [x] `node -c dither-bg.js` passes; no new network requests; zero deps
+
+---
+
 *Plan rewritten 2026-06-14 from a fresh audit of commit `c655a75` on `main`. Supersedes the prior `IMPROVEMENTS.md`.*
